@@ -11,7 +11,7 @@ const setup = (client: Client, bucket: string, port: string) => {
 	console.log('Creating middleware server on', port);
 	const server = http.createServer(async function (req, res) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
-		res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS, PUT, PATCH, DELETE');
+		res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD');
 		res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
 		res.setHeader('Access-Control-Allow-Credentials', 'true');
 
@@ -19,8 +19,9 @@ const setup = (client: Client, bucket: string, port: string) => {
 			if (!req.url) return console.log(`unknown url: ${req.url}`);
 			console.log(req.url);
 			const ext = parseExt(req.url);
+			const objName = decodeURI(req.url)
 
-			client.getObject(bucket, req.url, (e, r) => {
+			client.getObject(bucket, objName, (e, r) => {
 				if (e) {
 					console.log(e);
 				} else {

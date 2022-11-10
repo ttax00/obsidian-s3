@@ -86,7 +86,8 @@ export default class MyPlugin extends Plugin {
 			const file = files[i];
 			try {
 				const buf = Buffer.from(await file.arrayBuffer());
-				const name = folderName + '/' + file.name;
+				const fileName = this.generateResourceName(file);
+				const name = folderName + '/' + fileName;
 				console.log(buf);
 				console.log(name);
 
@@ -94,8 +95,9 @@ export default class MyPlugin extends Plugin {
 				this.client.putObject(bucketName, name, buf, (e, r) => {
 					if (e) {
 						console.log(e);
+						new Notice(`Error: Unable to upload ${fileName}`);
 					} else {
-						this.createResourceLink(file.name);
+						this.createResourceLink(fileName);
 						console.log(r);
 					}
 				});
@@ -107,13 +109,8 @@ export default class MyPlugin extends Plugin {
 		}
 
 	}
-	getActiveFile() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
-		const file = view?.file
-		return file
-	}
 
-	private createResourceLink(resourceName: string) {
+	private createResourceLink(fileName: string) {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
 		if (!view) {
 			new Notice('Error: No active view.')
@@ -124,8 +121,9 @@ export default class MyPlugin extends Plugin {
 			new Notice(`Error: no active editor`)
 			return
 		}
+		const url = `${this.url}/${fileName}`;
 
-		const newLinkText = `![S3 File](${this.url}/${resourceName})`
+		const newLinkText = `![S3 File](${encodeURI(url)})`
 
 		const cursor = editor.getCursor()
 		const line = editor.getLine(cursor.line)
@@ -139,6 +137,15 @@ export default class MyPlugin extends Plugin {
 				}
 			]
 		})
+	}
+
+	private generateResourceName(file: File) {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (activeFile) {
+			return `${activeFile.basename}-${Date.now()}-${file.name}`
+		} else {
+			return `${Date.now()}-${file.name}`
+		}
 	}
 
 	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
