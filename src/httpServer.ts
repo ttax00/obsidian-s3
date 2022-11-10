@@ -7,7 +7,7 @@ function parseExt(url: string): string {
 	return '.' + arr[arr.length - 1];
 }
 
-const setup = (client: Client, bucket: string, folder: string, port: string) => {
+const setup = (client: Client, bucket: string, port: string) => {
 	console.log('Creating middleware server on', port);
 	const server = http.createServer(async function (req, res) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,7 +20,7 @@ const setup = (client: Client, bucket: string, folder: string, port: string) => 
 			console.log(req.url);
 			const ext = parseExt(req.url);
 
-			client.getObject(bucket, folder + req.url, (e, r) => {
+			client.getObject(bucket, req.url, (e, r) => {
 				if (e) {
 					console.log(e);
 				} else {

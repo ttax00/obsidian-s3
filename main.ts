@@ -1,4 +1,4 @@
-import { Editor, MarkdownView, Plugin } from 'obsidian';
+import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
 import { Client } from 'minio';
 import { SettingsTab } from 'src/settings';
 import exp from 'src/httpServer';
@@ -28,7 +28,7 @@ function allFilesAreValidUploads(files: FileList) {
 	if (files.length === 0) return false;
 
 	for (let i = 0; i < files.length; i += 1) {
-		if (Array.from(mimeType.values()).includes(files[i].type)) return false;
+		if (!Array.from(mimeType.values()).includes(files[i].type)) return false;
 	}
 
 	return true;
@@ -38,13 +38,16 @@ export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	client: Client;
 	server: { listen(): void; close(): void; };
+	get url() {
+		return `http://localhost:${this.settings.port}/${this.settings.folderName}`
+	}
 
 	async onload() {
 		console.log("Loading Obsidian Storj");
 		await this.loadSettings();
 		console.log("obsidian storj loaded with settings:");
 		console.log(this.settings);
-		const { endPoint, accessKey, secretKey, port, bucketName, folderName } = this.settings;
+		const { endPoint, accessKey, secretKey, port, bucketName } = this.settings;
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingsTab(this.app, this));
@@ -58,7 +61,7 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// Spawn http server 
-		this.server = exp(this.client, bucketName, folderName, port);
+		this.server = exp(this.client, bucketName, port);
 		this.server.listen();
 
 		this.setupHandlers();
@@ -76,25 +79,69 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	private async uploadFile(file: File) {
+	private async uploadFiles(files: FileList) {
 		const { bucketName, folderName } = this.settings;
-		console.log(file);
-		const buf = Buffer.from(await file.arrayBuffer());
-		const name = folderName + '/' + file.name;
-		console.log(buf);
-		console.log(name);
+
+		for (let i = 0; i < files.length; i += 1) {
+			const file = files[i];
+			try {
+				const buf = Buffer.from(await file.arrayBuffer());
+				const name = folderName + '/' + file.name;
+				console.log(buf);
+				console.log(name);
 
 
-		this.client.putObject(bucketName, name, buf, (e, r) => {
-			if (e) {
-				console.log(e);
-			} else {
-				console.log(r);
+				this.client.putObject(bucketName, name, buf, (e, r) => {
+					if (e) {
+						console.log(e);
+					} else {
+						this.createResourceLink(file.name);
+						console.log(r);
+					}
+				});
 			}
-		});
+			catch (e) {
+				console.log(e);
+				return;
+			}
+		}
+
+	}
+	getActiveFile() {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+		const file = view?.file
+		return file
 	}
 
-	private pasteEventHandler = async (e: ClipboardEvent, _: Editor, markdownView: MarkdownView) => {
+	private createResourceLink(resourceName: string) {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+		if (!view) {
+			new Notice('Error: No active view.')
+			return
+		}
+		const { editor } = view;
+		if (!editor) {
+			new Notice(`Error: no active editor`)
+			return
+		}
+
+		const newLinkText = `![S3 File](${this.url}/${resourceName})`
+
+		const cursor = editor.getCursor()
+		const line = editor.getLine(cursor.line)
+		// console.log('editor context', cursor, )
+		editor.transaction({
+			changes: [
+				{
+					from: { ...cursor, ch: 0 },
+					to: { ...cursor, ch: line.length },
+					text: newLinkText,
+				}
+			]
+		})
+	}
+
+	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.client) {
 			return;
 		}
@@ -107,15 +154,7 @@ export default class MyPlugin extends Plugin {
 		e.preventDefault();
 		console.log('boo');
 
-		for (let i = 0; i < files.length; i += 1) {
-			try {
-				await this.uploadFile(files[i]);
-			}
-			catch (e) {
-				console.log(e);
-				return;
-			}
-		}
+		await this.uploadFiles(files);
 	}
 	private async dropEventHandler() {
 
@@ -123,7 +162,7 @@ export default class MyPlugin extends Plugin {
 
 	private setupHandlers() {
 		this.registerEvent(
-			this.app.workspace.on("editor-paste", this.pasteEventHandler)
+			this.app.workspace.on("editor-paste", this.pasteEventHandler.bind(this))
 		);
 		this.registerEvent(
 			this.app.workspace.on("editor-drop", this.dropEventHandler.bind(this))
