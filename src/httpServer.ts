@@ -16,14 +16,16 @@ const setup = (client: Client, bucket: string, port: string) => {
 
 		try {
 			if (!req.url) return console.log(`unknown url: ${req.url}`);
-			console.log(req.url);
 			const ext = parseExt(req.url);
 			const objName = decodeURI(req.url)
+			console.log(`fetching object: ${objName}`);
+
 			const result = await client.getObject(bucket, objName);
 			res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
 			result.pipe(res);
 		} catch (e) {
 			res.statusCode = 500;
+			console.log(`Error getting the file: ${e}`);
 			res.end(`Error getting the file: ${e}.`);
 		}
 	});

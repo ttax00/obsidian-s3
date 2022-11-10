@@ -3,6 +3,8 @@ import { Client } from 'minio';
 import { SettingsTab } from 'src/settings';
 import exp from 'src/httpServer';
 import { mimeType } from 'src/constants';
+import internal from 'stream';
+import toIt from 'blob-to-it'
 
 // Remember to rename these classes and interfaces!
 
@@ -28,14 +30,23 @@ function allFilesAreValidUploads(files: FileList) {
 	if (files.length === 0) return false;
 
 	for (let i = 0; i < files.length; i += 1) {
-		if (!Array.from(mimeType.values()).includes(files[i].type)) return false;
+		if (!Array.from(mimeType.values()).includes(files[i].type)) {
+			new Notice(`File of type ${files[i].type} is not supported by Obsidian for web links.`)
+			return false;
+		}
 	}
 
 	return true;
 }
 
+function isValidSettings(settings: MyPluginSettings) {
+	if (settings.accessKey != '' && settings.secretKey != '' && settings.endPoint != '' && settings.bucketName != '') return true;
+	return false;
+}
+
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
+	pluginName = "Obsidian S3";
 	client: Client;
 	server: { listen(): void; close(): void; };
 	get url() {
@@ -43,28 +54,35 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async onload() {
-		console.log("Loading Obsidian Storj");
+		console.log(`Loading ${this.pluginName}`);
 		await this.loadSettings();
-		console.log("obsidian storj loaded with settings:");
-		console.log(this.settings);
-		const { endPoint, accessKey, secretKey, port, bucketName } = this.settings;
+
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingsTab(this.app, this));
 
-		// Create s3 client.
-		this.client = new Client({
-			endPoint,
-			useSSL: true,
-			accessKey,
-			secretKey
-		});
+		this.tryStartService();
+	}
 
-		// Spawn http server 
-		this.server = exp(this.client, bucketName, port);
-		this.server.listen();
+	tryStartService() {
+		const { endPoint, accessKey, secretKey, port, bucketName } = this.settings;
+		// Only create clients when settings are valid.
+		if (isValidSettings(this.settings)) {
+			this.client = new Client({
+				endPoint,
+				useSSL: true,
+				accessKey,
+				secretKey
+			});
 
-		this.setupHandlers();
+			// Spawn http server 
+			this.server = exp(this.client, bucketName, port);
+			this.server.listen();
+
+			this.setupHandlers();
+		} else {
+			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.");
+		}
 	}
 
 	onunload() {
@@ -84,25 +102,31 @@ export default class MyPlugin extends Plugin {
 
 		for (let i = 0; i < files.length; i += 1) {
 			const file = files[i];
+			const fileName = this.generateResourceName(file);
+			const name = folderName + '/' + fileName;
+			console.log(`Uploading: ${name}`);
+			new Notice(`Uploading: ${name}`);
 			try {
-				const buf = Buffer.from(await file.arrayBuffer());
-				const fileName = this.generateResourceName(file);
-				const name = folderName + '/' + fileName;
-				console.log(buf);
-				console.log(name);
+				const readable = internal.Readable.from(toIt(file));
+				let progress = 0;
+				readable.on('data', (chunk) => {
+					progress += chunk.length;
+				})
 
+				const handle = window.setInterval(() => new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`), 5000);
+				this.registerInterval(handle);
+				readable.on('close', () => {
+					window.clearInterval(handle);
+					new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`)
+					new Notice('Creating link...')
+				})
+				const result = await this.client.putObject(bucketName, name, readable, file.size);
 
-				this.client.putObject(bucketName, name, buf, (e, r) => {
-					if (e) {
-						console.log(e);
-						new Notice(`Error: Unable to upload ${fileName}`);
-					} else {
-						this.createResourceLink(fileName);
-						console.log(r);
-					}
-				});
+				this.createResourceLink(fileName, file);
+				console.log(result);
 			}
 			catch (e) {
+				new Notice(`Error: Unable to upload ${fileName}, see console for more details.`);
 				console.log(e);
 				return;
 			}
@@ -110,7 +134,7 @@ export default class MyPlugin extends Plugin {
 
 	}
 
-	private createResourceLink(fileName: string) {
+	private createResourceLink(fileName: string, file: File) {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
 		if (!view) {
 			new Notice('Error: No active view.')
@@ -121,9 +145,12 @@ export default class MyPlugin extends Plugin {
 			new Notice(`Error: no active editor`)
 			return
 		}
-		const url = `${this.url}/${fileName}`;
+		const url = encodeURI(`${this.url}/${fileName}`);
 
-		const newLinkText = `![S3 File](${encodeURI(url)})`
+		let newLinkText = `![S3 File](${url})`
+		if (file.type.startsWith('video')) {
+			newLinkText = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen> </iframe>`;
+		}
 
 		const cursor = editor.getCursor()
 		const line = editor.getLine(cursor.line)
@@ -137,6 +164,8 @@ export default class MyPlugin extends Plugin {
 				}
 			]
 		})
+
+		new Notice("Link created.");
 	}
 
 	private generateResourceName(file: File) {
@@ -150,6 +179,7 @@ export default class MyPlugin extends Plugin {
 
 	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.client) {
+			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.")
 			return;
 		}
 		if (!e.clipboardData) return;

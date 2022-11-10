@@ -20,8 +20,8 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Endpoint')
 			.setDesc('Your S3 API Endpoint')
 			.addText(text => text
-				.setPlaceholder('https://gateway.storjshare.io')
-				.setValue(this.plugin.settings.endPoint)
+				.setPlaceholder('gateway.storjshare.io')
+				.setValue(this.plugin.settings.endPoint ?? '')
 				.onChange(async (value) => {
 					console.log('Endpoint set to: ' + value);
 					this.plugin.settings.endPoint = value;
@@ -33,7 +33,7 @@ export class SettingsTab extends PluginSettingTab {
 			.setDesc('Your S3 Access Key')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.accessKey)
+				.setValue(this.plugin.settings.accessKey ?? '')
 				.onChange(async (value) => {
 					console.log('Access key set to: ' + value);
 					this.plugin.settings.accessKey = value;
@@ -46,7 +46,7 @@ export class SettingsTab extends PluginSettingTab {
 			.setDesc('Your S3 Secret Key')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.secretKey)
+				.setValue(this.plugin.settings.secretKey ?? '')
 				.onChange(async (value) => {
 					console.log('Secret key set to: ' + value);
 					this.plugin.settings.secretKey = value;
@@ -57,7 +57,7 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Server Port')
 			.addText(text => text
 				.setPlaceholder(this.plugin.settings.port)
-				.setValue(this.plugin.settings.secretKey)
+				.setValue(this.plugin.settings.secretKey ?? '')
 				.onChange(async (value) => {
 					console.log('Secret key set to: ' + value);
 					this.plugin.settings.secretKey = value;
@@ -68,7 +68,7 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Bucket Name')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.bucketName)
+				.setValue(this.plugin.settings.bucketName ?? '')
 				.onChange(async (value) => {
 					this.plugin.settings.bucketName = value;
 					await this.plugin.saveSettings();
