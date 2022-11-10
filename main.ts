@@ -31,7 +31,6 @@ function allFilesAreValidUploads(files: FileList) {
 
 	for (let i = 0; i < files.length; i += 1) {
 		if (!Array.from(mimeType.values()).includes(files[i].type)) {
-			new Notice(`File of type ${files[i].type} is not supported by Obsidian for web links.`)
 			return false;
 		}
 	}
