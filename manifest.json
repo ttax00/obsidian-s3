@@ -1,9 +1,9 @@
 {
-	"id": "obsidian-storj",
-	"name": "Obsidian Storj",
+	"id": "obsidian-s3",
+	"name": "Obsidian S3",
 	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
+	"description": "An obsidian plugin for uploading, and linking to AWS-S3 compatible services.",
 	"author": "TechTheAwesome",
 	"authorUrl": "https://github.com/TechTheAwesome",
 	"isDesktopOnly": false
