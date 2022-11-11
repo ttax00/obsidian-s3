@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-s3",
 	"name": "Obsidian S3",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
 	"description": "An obsidian plugin for uploading, and linking to AWS-S3 compatible services.",
 	"author": "TechTheAwesome",
