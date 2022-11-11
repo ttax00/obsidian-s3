@@ -105,8 +105,8 @@ export default class ObsidianS3 extends Plugin {
 			const file = files[i];
 			const fileName = this.generateResourceName(file);
 			const name = folderName + '/' + fileName;
-			console.log(`Uploading: ${name}`);
-			new Notice(`Uploading: ${name}`);
+			console.log(`Uploading: ${name}...`);
+			new Notice(`Uploading: ${name}...`);
 			try {
 				const readable = internal.Readable.from(toIt(file));
 				let progress = 0;
@@ -118,7 +118,6 @@ export default class ObsidianS3 extends Plugin {
 				this.registerInterval(handle);
 				readable.on('close', () => {
 					window.clearInterval(handle);
-					new Notice(`Upload complete.`);
 					new Notice('Creating link...');
 				})
 				const result = await this.client.putObject(bucketName, name, readable, file.size);
