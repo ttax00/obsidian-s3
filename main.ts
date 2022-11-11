@@ -1,5 +1,5 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
-import { Client } from 'minio';
+import { Client, BucketItem } from 'minio';
 import { SettingsTab } from 'src/settings';
 import exp from 'src/httpServer';
 import { mimeType } from 'src/constants';
@@ -100,7 +100,7 @@ function createResourceLink(plugin: ObsidianS3, fileName: string, file: File) {
 	const url = encodeURI(`${plugin.url}/${fileName}`);
 
 	let newLinkText = `![S3 File](${url})`
-	if (file.type.startsWith('video')) {
+	if (file.type.startsWith('video') || file.type.startsWith('audio')) {
 		newLinkText = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
 	} else if (file.type === 'text/html') {
 		newLinkText = `<iframe src="${url}"></iframe>`
@@ -140,11 +140,81 @@ export default class ObsidianS3 extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingsTab(this.app, this));
 		this.setupHandlers();
-
-		this.tryStartService();
+		if (this.tryStartService()) {
+			this.addCommand({
+				id: 'obsidian-s3-clear-unused',
+				name: 'Clear unused s3 resources.',
+				callback: this.clearUnusedCallback.bind(this),
+			});
+		}
 	}
 
-	tryStartService() {
+	async clearUnusedCallback() {
+		new Notice('Indexing resources...');
+		const { bucketName, folderName } = this.settings;
+		const getS3Index = new Promise<BucketItem[]>((resolve, reject) => {
+			const s3Index: BucketItem[] = [];
+			this.client.listObjects(bucketName, folderName, true)
+				.on('data', (i) => {
+					s3Index.push(i)
+				})
+				.on('end', () => {
+					resolve(s3Index)
+				});
+		})
+
+		function getNameFromUrl(res: RegExpExecArray | null, plugin: ObsidianS3): string {
+			if (res) {
+				return decodeURI(res[1]).replace(plugin.url, plugin.settings.folderName);
+			} else {
+				return '';
+			}
+		}
+
+		const { vault } = this.app;
+		console.log("running cmd");
+		const files = vault.getMarkdownFiles();
+		const obsidianIndex: string[] = []
+		files.map(async (f) => {
+			const content = await vault.read(f);
+			if (!content.match(this.url)) return;
+			const matchLink = content.match(/!\[.*]\((.*)\)/g)?.filter((m) => m.includes(this.url));
+			if (matchLink && matchLink.length > 0) {
+				obsidianIndex.push(...matchLink.map((m) => {
+					const res = /!\[.*]\((.*)\)/.exec(m);
+					return getNameFromUrl(res, this);
+				}));
+			}
+			const matchIFrame = content.match(/src="([^"]*)"/g)?.filter((m) => m.includes(this.url));
+			if (matchIFrame && matchIFrame.length > 0) {
+				obsidianIndex.push(...matchIFrame.map((m) => {
+					const res = /src="([^"]*)"/.exec(m);
+					return getNameFromUrl(res, this);
+				}));
+			}
+		})
+
+		const s3Index = await getS3Index;
+
+		const doDelete = s3Index.filter((i) => !obsidianIndex.includes(i.name));
+		if (doDelete.length === 0) {
+			new Notice("No items to delete.");
+			return;
+		}
+
+		new Notice(`Deleting ${doDelete.length} objects...`);
+
+		for (let i = 0; i < doDelete.length; i++) {
+			console.log(`Deleting: ${doDelete[i].name}`);
+			await this.client.removeObject(bucketName, doDelete[i].name);
+		}
+
+		new Notice(`Deleted ${doDelete.length} S3 objects`)
+		console.log("Deletion complete");
+
+	}
+
+	tryStartService(): boolean {
 		let { endPoint } = this.settings;
 		const { accessKey, secretKey, port, bucketName } = this.settings;
 		if (endPoint.startsWith('https://') || endPoint.startsWith('http://')) {
@@ -165,9 +235,10 @@ export default class ObsidianS3 extends Plugin {
 			// Spawn http server 
 			this.server = exp(this.client, bucketName, port);
 			this.server.listen();
-
+			return true;
 		} else {
 			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.");
+			return false;
 		}
 	}
 
