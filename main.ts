@@ -5,6 +5,7 @@ import exp from 'src/httpServer';
 import { mimeType } from 'src/constants';
 import internal from 'stream';
 import toIt from 'blob-to-it'
+import { URL } from 'url';
 
 interface ObsidianS3Settings {
 	accessKey: string;
@@ -28,7 +29,7 @@ function allFilesAreValidUploads(files: FileList) {
 	if (files.length === 0) return false;
 
 	for (let i = 0; i < files.length; i += 1) {
-		if (!Array.from(mimeType.values()).includes(files[i].type)) {
+		if (!Array.from(mimeType.values()).includes(files[i].type) || files[i].size == 0) {
 			new Notice(`File of type ${files[i].type} is not supported by Obsidian with external links.`)
 			return false;
 		}
@@ -40,6 +41,86 @@ function allFilesAreValidUploads(files: FileList) {
 function isValidSettings(settings: ObsidianS3Settings) {
 	if (settings.accessKey != '' && settings.secretKey != '' && settings.endPoint != '' && settings.bucketName != '') return true;
 	return false;
+}
+
+async function uploadFiles(plugin: ObsidianS3, files: FileList) {
+	const { bucketName, folderName } = plugin.settings;
+
+	for (let i = 0; i < files.length; i += 1) {
+		const file = files[i];
+		const fileName = generateResourceName(plugin, file);
+		const name = folderName + '/' + fileName;
+		console.log(`Uploading: ${name}...`);
+
+		new Notice(`Uploading: ${name} ${file.size} bit...`);
+		try {
+			const readable = internal.Readable.from(toIt(file));
+			let progress = 0;
+			readable.on('data', (chunk) => {
+				progress += chunk.length;
+			})
+
+			const handle = window.setInterval(() => new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`), 5000);
+			plugin.registerInterval(handle);
+			readable.on('close', () => {
+				window.clearInterval(handle);
+				new Notice('Creating link...');
+			})
+			await plugin.client.putObject(bucketName, name, readable, file.size);
+			createResourceLink(plugin, fileName, file);
+		}
+		catch (e) {
+			new Notice(`Error: Unable to upload ${fileName}. Make sure your S3 credentials are correct.`);
+			console.log(e);
+			return;
+		}
+	}
+}
+
+function generateResourceName(plugin: ObsidianS3, file: File) {
+	const activeFile = plugin.app.workspace.getActiveFile();
+	if (activeFile) {
+		return `${activeFile.basename}-${Date.now()}-${file.name}`
+	} else {
+		return `${Date.now()}-${file.name}`
+	}
+}
+
+function createResourceLink(plugin: ObsidianS3, fileName: string, file: File) {
+	const view = plugin.app.workspace.getActiveViewOfType(MarkdownView)
+	if (!view) {
+		new Notice('Error: No active view.')
+		return
+	}
+	const { editor } = view;
+	if (!editor) {
+		new Notice(`Error: no active editor`)
+		return
+	}
+	const url = encodeURI(`${plugin.url}/${fileName}`);
+
+	let newLinkText = `![S3 File](${url})`
+	if (file.type.startsWith('video')) {
+		newLinkText = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
+	} else if (file.type === 'text/html') {
+		newLinkText = `<iframe src="${url}"></iframe>`
+	}
+
+	const cursor = editor.getCursor()
+	const line = editor.getLine(cursor.line)
+	editor.transaction({
+		changes: [
+			{
+
+				from: { ...cursor, ch: 0, },
+				to: { ...cursor, ch: line.length, },
+				text: newLinkText + "\n",
+			}
+		]
+	})
+	cursor.line += 1;
+	editor.setCursor(cursor);
+	new Notice("Link created.");
 }
 
 export default class ObsidianS3 extends Plugin {
@@ -64,7 +145,13 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	tryStartService() {
-		const { endPoint, accessKey, secretKey, port, bucketName } = this.settings;
+		let { endPoint } = this.settings;
+		const { accessKey, secretKey, port, bucketName } = this.settings;
+		if (endPoint.startsWith('https://') || endPoint.startsWith('http://')) {
+			const url = new URL(endPoint);
+			endPoint = url.hostname;
+		}
+
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
 			new Notice(`Creating S3 Client`);
@@ -96,88 +183,6 @@ export default class ObsidianS3 extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	private async uploadFiles(files: FileList) {
-		const { bucketName, folderName } = this.settings;
-
-		for (let i = 0; i < files.length; i += 1) {
-			const file = files[i];
-			const fileName = this.generateResourceName(file);
-			const name = folderName + '/' + fileName;
-			console.log(`Uploading: ${name}...`);
-			new Notice(`Uploading: ${name}...`);
-			try {
-				const readable = internal.Readable.from(toIt(file));
-				let progress = 0;
-				readable.on('data', (chunk) => {
-					progress += chunk.length;
-				})
-
-				const handle = window.setInterval(() => new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`), 5000);
-				this.registerInterval(handle);
-				readable.on('close', () => {
-					window.clearInterval(handle);
-					new Notice('Creating link...');
-				})
-				const result = await this.client.putObject(bucketName, name, readable, file.size);
-
-				this.createResourceLink(fileName, file);
-				console.log(result);
-			}
-			catch (e) {
-				new Notice(`Error: Unable to upload ${fileName}. See details in console.`);
-				console.log(e);
-				return;
-			}
-		}
-
-	}
-
-	private createResourceLink(fileName: string, file: File) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
-		if (!view) {
-			new Notice('Error: No active view.')
-			return
-		}
-		const { editor } = view;
-		if (!editor) {
-			new Notice(`Error: no active editor`)
-			return
-		}
-		const url = encodeURI(`${this.url}/${fileName}`);
-
-		let newLinkText = `![S3 File](${url})`
-		if (file.type.startsWith('video')) {
-			newLinkText = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen> </iframe>`;
-		}
-
-		const cursor = editor.getCursor()
-		const line = editor.getLine(cursor.line)
-
-		// console.log('editor context', cursor, )
-		editor.transaction({
-			changes: [
-				{
-
-					from: { ...cursor, ch: 0, },
-					to: { ...cursor, ch: line.length, },
-					text: newLinkText + "\n",
-				}
-			]
-		})
-		cursor.line += 1;
-		editor.setCursor(cursor);
-		new Notice("Link created.");
-	}
-
-	private generateResourceName(file: File) {
-		const activeFile = this.app.workspace.getActiveFile();
-		if (activeFile) {
-			return `${activeFile.basename}-${Date.now()}-${file.name}`
-		} else {
-			return `${Date.now()}-${file.name}`
-		}
-	}
-
 	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.client) {
 			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.")
@@ -187,11 +192,10 @@ export default class ObsidianS3 extends Plugin {
 		if (e.clipboardData.files.length === 0) return;
 		const files = e.clipboardData.files;
 
-		console.log(files);
 		if (!allFilesAreValidUploads(files)) return;
 		e.preventDefault();
 
-		await this.uploadFiles(files);
+		await uploadFiles(this, files);
 	}
 	private async dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.client) {
@@ -199,8 +203,6 @@ export default class ObsidianS3 extends Plugin {
 			return;
 		}
 		if (!e.dataTransfer) return;
-
-		console.log(e);
 
 		if (
 			e.dataTransfer.types.length !== 1 ||
@@ -211,11 +213,14 @@ export default class ObsidianS3 extends Plugin {
 
 		const { files } = e.dataTransfer;
 
+		if (!allFilesAreValidUploads(files)) return;
+
 		e.preventDefault();
-		await this.uploadFiles(files);
+		await uploadFiles(this, files);
 	}
 
 	private setupHandlers() {
+
 		this.registerEvent(
 			this.app.workspace.on("editor-paste", this.pasteEventHandler.bind(this))
 		);

@@ -2,7 +2,7 @@ export const ALLOWED_HEADERS =
 	'Access-Control-Allow-Headers, Origin, Authorization,Accept,x-client-id, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, hypothesis-client-version';
 
 export const mimeType = new Map([
-	['.html', 'text/html'],
+	// ['.html', 'text/html'],
 	// ['.js', 'text/javascript'],
 	['.ico', 'image/x-icon'],
 	['.css', 'text/css'],
@@ -18,5 +18,5 @@ export const mimeType = new Map([
 	// ['.zip', 'application/zip'],
 	// ['.doc', 'application/msword'],
 	// ['.eot', 'application/vnd.ms-fontobject'],
-	['.ttf', 'application/x-font-ttf'],
+	// ['.ttf', 'application/x-font-ttf'],
 ]);

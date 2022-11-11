@@ -23,7 +23,6 @@ export class SettingsTab extends PluginSettingTab {
 				.setPlaceholder('gateway.storjshare.io')
 				.setValue(this.plugin.settings.endPoint ?? '')
 				.onChange(async (value) => {
-					console.log('Endpoint set to: ' + value);
 					this.plugin.settings.endPoint = value.trim();
 					await this.plugin.saveSettings();
 				}));
@@ -35,7 +34,6 @@ export class SettingsTab extends PluginSettingTab {
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.accessKey ?? '')
 				.onChange(async (value) => {
-					console.log('Access key set to: ' + value);
 					this.plugin.settings.accessKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
@@ -48,7 +46,6 @@ export class SettingsTab extends PluginSettingTab {
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.secretKey ?? '')
 				.onChange(async (value) => {
-					console.log('Secret key set to: ' + value);
 					this.plugin.settings.secretKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
@@ -57,10 +54,9 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Server Port')
 			.addText(text => text
 				.setPlaceholder(this.plugin.settings.port)
-				.setValue(this.plugin.settings.secretKey ?? '')
+				.setValue(this.plugin.settings.port ?? '')
 				.onChange(async (value) => {
-					console.log('Secret key set to: ' + value);
-					this.plugin.settings.secretKey = value.trim();
+					this.plugin.settings.port = value.trim();
 					await this.plugin.saveSettings();
 				}));
 

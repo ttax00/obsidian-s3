@@ -15,12 +15,12 @@ const setup = (client: Client, bucket: string, port: string) => {
 		res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
 		res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-		try {
-			if (!req.url) return console.log(`unknown url: ${req.url}`);
-			const ext = parseExt(req.url);
-			const objName = decodeURI(req.url)
-			console.log(`fetching object: ${objName}`);
+		if (!req.url) return new Notice(`unknown url: ${req.url}`);
+		const ext = parseExt(req.url);
+		const objName = decodeURI(req.url);
 
+		try {
+			console.log(`fetching object: ${objName}`);
 			const result = await client.getObject(bucket, objName);
 			res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
 			result.pipe(res);
@@ -28,17 +28,18 @@ const setup = (client: Client, bucket: string, port: string) => {
 			res.statusCode = 500;
 			console.log(`Error getting the file: ${e}`);
 			res.end(`Error getting the file: ${e}.`);
+			new Notice(`Error: Unable to fetch ${objName}`)
 		}
 	});
 
 	return {
 		listen() {
-			new Notice(`Obsidian S3 - Creating server on port: ${port}`);
+			new Notice(`Creating S3 server on port: ${port}`);
 
 			server.listen(port);
 		},
 		close() {
-			new Notice("Obsidian S3: Closing middleware server.")
+			new Notice("Closing S3 server.")
 			server.close();
 		}
 	};
