@@ -6,9 +6,7 @@ import { mimeType } from 'src/constants';
 import internal from 'stream';
 import toIt from 'blob-to-it'
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
+interface ObsidianS3Settings {
 	accessKey: string;
 	secretKey: string;
 	endPoint: string;
@@ -17,7 +15,7 @@ interface MyPluginSettings {
 	bucketName: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: ObsidianS3Settings = {
 	accessKey: '',
 	secretKey: '',
 	endPoint: '',
@@ -31,6 +29,7 @@ function allFilesAreValidUploads(files: FileList) {
 
 	for (let i = 0; i < files.length; i += 1) {
 		if (!Array.from(mimeType.values()).includes(files[i].type)) {
+			new Notice(`File of type ${files[i].type} is not supported by Obsidian with external links.`)
 			return false;
 		}
 	}
@@ -38,13 +37,13 @@ function allFilesAreValidUploads(files: FileList) {
 	return true;
 }
 
-function isValidSettings(settings: MyPluginSettings) {
+function isValidSettings(settings: ObsidianS3Settings) {
 	if (settings.accessKey != '' && settings.secretKey != '' && settings.endPoint != '' && settings.bucketName != '') return true;
 	return false;
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class ObsidianS3 extends Plugin {
+	settings: ObsidianS3Settings;
 	pluginName = "Obsidian S3";
 	client: Client;
 	server: { listen(): void; close(): void; };
@@ -59,6 +58,7 @@ export default class MyPlugin extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingsTab(this.app, this));
+		this.setupHandlers();
 
 		this.tryStartService();
 	}
@@ -67,6 +67,7 @@ export default class MyPlugin extends Plugin {
 		const { endPoint, accessKey, secretKey, port, bucketName } = this.settings;
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
+			new Notice(`Creating S3 Client`);
 			this.client = new Client({
 				endPoint,
 				useSSL: true,
@@ -78,7 +79,6 @@ export default class MyPlugin extends Plugin {
 			this.server = exp(this.client, bucketName, port);
 			this.server.listen();
 
-			this.setupHandlers();
 		} else {
 			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.");
 		}
@@ -103,8 +103,8 @@ export default class MyPlugin extends Plugin {
 			const file = files[i];
 			const fileName = this.generateResourceName(file);
 			const name = folderName + '/' + fileName;
-			console.log(`Uploading: ${name}`);
-			new Notice(`Uploading: ${name}`);
+			console.log(`Uploading: ${name}...`);
+			new Notice(`Uploading: ${name}...`);
 			try {
 				const readable = internal.Readable.from(toIt(file));
 				let progress = 0;
@@ -116,8 +116,7 @@ export default class MyPlugin extends Plugin {
 				this.registerInterval(handle);
 				readable.on('close', () => {
 					window.clearInterval(handle);
-					new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`)
-					new Notice('Creating link...')
+					new Notice('Creating link...');
 				})
 				const result = await this.client.putObject(bucketName, name, readable, file.size);
 
@@ -125,7 +124,7 @@ export default class MyPlugin extends Plugin {
 				console.log(result);
 			}
 			catch (e) {
-				new Notice(`Error: Unable to upload ${fileName}, see console for more details.`);
+				new Notice(`Error: Unable to upload ${fileName}. See details in console.`);
 				console.log(e);
 				return;
 			}
@@ -153,17 +152,20 @@ export default class MyPlugin extends Plugin {
 
 		const cursor = editor.getCursor()
 		const line = editor.getLine(cursor.line)
+
 		// console.log('editor context', cursor, )
 		editor.transaction({
 			changes: [
 				{
-					from: { ...cursor, ch: 0 },
-					to: { ...cursor, ch: line.length },
-					text: newLinkText,
+
+					from: { ...cursor, ch: 0, },
+					to: { ...cursor, ch: line.length, },
+					text: newLinkText + "\n",
 				}
 			]
 		})
-
+		cursor.line += 1;
+		editor.setCursor(cursor);
 		new Notice("Link created.");
 	}
 
@@ -188,12 +190,29 @@ export default class MyPlugin extends Plugin {
 		console.log(files);
 		if (!allFilesAreValidUploads(files)) return;
 		e.preventDefault();
-		console.log('boo');
 
 		await this.uploadFiles(files);
 	}
-	private async dropEventHandler() {
+	private async dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
+		if (!this.client) {
+			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.")
+			return;
+		}
+		if (!e.dataTransfer) return;
 
+		console.log(e);
+
+		if (
+			e.dataTransfer.types.length !== 1 ||
+			!e.dataTransfer.types.includes("Files")
+		) {
+			return;
+		}
+
+		const { files } = e.dataTransfer;
+
+		e.preventDefault();
+		await this.uploadFiles(files);
 	}
 
 	private setupHandlers() {

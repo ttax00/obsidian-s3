@@ -1,10 +1,10 @@
-import MyPlugin from "main";
+import ObsidianS3 from "main";
 import { App, PluginSettingTab, Setting } from "obsidian";
 
 export class SettingsTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: ObsidianS3;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: ObsidianS3) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -24,7 +24,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.endPoint ?? '')
 				.onChange(async (value) => {
 					console.log('Endpoint set to: ' + value);
-					this.plugin.settings.endPoint = value;
+					this.plugin.settings.endPoint = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -36,7 +36,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.accessKey ?? '')
 				.onChange(async (value) => {
 					console.log('Access key set to: ' + value);
-					this.plugin.settings.accessKey = value;
+					this.plugin.settings.accessKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -49,7 +49,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.secretKey ?? '')
 				.onChange(async (value) => {
 					console.log('Secret key set to: ' + value);
-					this.plugin.settings.secretKey = value;
+					this.plugin.settings.secretKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -60,7 +60,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.secretKey ?? '')
 				.onChange(async (value) => {
 					console.log('Secret key set to: ' + value);
-					this.plugin.settings.secretKey = value;
+					this.plugin.settings.secretKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -70,7 +70,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setPlaceholder('')
 				.setValue(this.plugin.settings.bucketName ?? '')
 				.onChange(async (value) => {
-					this.plugin.settings.bucketName = value;
+					this.plugin.settings.bucketName = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -80,7 +80,7 @@ export class SettingsTab extends PluginSettingTab {
 				.setPlaceholder(this.plugin.settings.port)
 				.setValue(this.plugin.settings.folderName)
 				.onChange(async (value) => {
-					this.plugin.settings.folderName = value;
+					this.plugin.settings.folderName = value.trim();
 					await this.plugin.saveSettings();
 				}));
 	}

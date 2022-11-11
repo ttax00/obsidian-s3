@@ -1,6 +1,7 @@
 import http from 'http';
 import { ALLOWED_HEADERS, mimeType } from './constants';
 import { Client } from 'minio';
+import { Notice } from 'obsidian';
 
 function parseExt(url: string): string {
 	const arr = url.split('.');
@@ -32,12 +33,12 @@ const setup = (client: Client, bucket: string, port: string) => {
 
 	return {
 		listen() {
-			console.log(`Obsidian S3: Creating middleware server on port: ${port}`);
+			new Notice(`Obsidian S3 - Creating server on port: ${port}`);
 
 			server.listen(port);
 		},
 		close() {
-			console.log("Obsidian S3: Closing middleware server.")
+			new Notice("Obsidian S3: Closing middleware server.")
 			server.close();
 		}
 	};
