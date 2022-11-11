@@ -164,6 +164,7 @@ export default class ObsidianS3 extends Plugin {
 		})
 
 		function getNameFromUrl(res: RegExpExecArray | null, plugin: ObsidianS3): string {
+			// Res should be ["...", "https://..."]
 			if (res) {
 				return decodeURI(res[1]).replace(plugin.url, plugin.settings.folderName);
 			} else {
@@ -178,6 +179,7 @@ export default class ObsidianS3 extends Plugin {
 		files.map(async (f) => {
 			const content = await vault.read(f);
 			if (!content.match(this.url)) return;
+			// matching markdown ![]() syntax
 			const matchLink = content.match(/!\[.*]\((.*)\)/g)?.filter((m) => m.includes(this.url));
 			if (matchLink && matchLink.length > 0) {
 				obsidianIndex.push(...matchLink.map((m) => {
@@ -185,6 +187,7 @@ export default class ObsidianS3 extends Plugin {
 					return getNameFromUrl(res, this);
 				}));
 			}
+			// matching <iframe src="...">
 			const matchIFrame = content.match(/src="([^"]*)"/g)?.filter((m) => m.includes(this.url));
 			if (matchIFrame && matchIFrame.length > 0) {
 				obsidianIndex.push(...matchIFrame.map((m) => {
