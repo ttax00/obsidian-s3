@@ -39,7 +39,7 @@ export class S3Client {
 		})
 	}
 
-	public upload(file: File, progress?: (prog: number) => void, cleanup?: () => void) {
+	public upload(file: File, fileName: string, progress?: (prog: number) => void, cleanup?: () => void) {
 		const readable = internal.Readable.from(blobToIt(file));
 		let prog = 0;
 		readable.on('data', (c) => {
@@ -48,7 +48,7 @@ export class S3Client {
 		})
 		readable.on('close', () => { if (cleanup) cleanup(); })
 		return this.client.putObject(this.bucketName,
-			join(this.folderName, file.name), readable, file.size);
+			join(this.folderName, fileName), readable, file.size);
 	}
 
 	public getObject(path: string) {

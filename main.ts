@@ -52,12 +52,12 @@ async function uploadFiles(plugin: ObsidianS3, files: FileList) {
 			let progress = 0;
 			const handle = window.setInterval(() => new Notice(`Uploading: ${fileName} ${progress}%`), 5000);
 			plugin.registerInterval(handle);
-			await plugin.s3.upload(file,
+			const res = await plugin.s3.upload(file, fileName,
 				(prog) => progress = prog,
 				() => {
 					window.clearInterval(handle);
 				});
-
+			console.log(res);
 			createResourceLink(plugin, fileName, file);
 		}
 		catch (e) {
@@ -152,8 +152,8 @@ export default class ObsidianS3 extends Plugin {
 		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
 
 		for (let i = 0; i < doDelete.length; i++) {
-			console.log(`S3: Deleting ${doDelete[i].name}`);
-			await this.s3.removeObject(doDelete[i].name);
+			// console.log(`S3: Deleting ${doDelete[i].name}`);
+			// await this.s3.removeObject(doDelete[i].name);
 		}
 
 		new Notice(`Deleted ${doDelete.length} objects`)
