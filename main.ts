@@ -135,11 +135,13 @@ export default class ObsidianS3 extends Plugin {
 		const files = vault.getMarkdownFiles();
 
 		new Notice('Indexing resources...');
-		let obsidianIndex = await getS3URLs(files, vault);
+		let obsidianIndex = await getS3URLs(files, vault, this.url);
 		obsidianIndex = obsidianIndex.map((s) => getS3Path(s, this.url, this.settings.folderName))
+		console.log(obsidianIndex)
 
 		new Notice('Indexing S3 objects...');
 		const s3Index = await this.s3.listObjects();
+		console.log(s3Index);
 
 		const doDelete = s3Index.filter((i) => !obsidianIndex.includes(i.name));
 		if (doDelete.length === 0) {
