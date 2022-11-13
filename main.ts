@@ -2,9 +2,8 @@ import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
 import { SettingsTab } from 'src/settings';
 import exp from 'src/httpServer';
 import { mimeType } from 'src/constants';
-import { URL } from 'url';
 import { S3Client } from 'src/s3Client';
-import { getS3Path, getS3URLs } from 'src/helper';
+import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
 
 export interface ObsidianS3Settings {
 	accessKey: string;
@@ -45,7 +44,8 @@ function isValidSettings(settings: ObsidianS3Settings) {
 async function uploadFiles(plugin: ObsidianS3, files: FileList) {
 	for (let i = 0; i < files.length; i += 1) {
 		const file = files[i];
-		const fileName = generateResourceName(plugin, file);
+
+		const fileName = generateResourceName(file, plugin.app.workspace.getActiveFile()?.basename);
 
 		new Notice(`Uploading: ${fileName} ${file.size} bit...`);
 		try {
@@ -68,14 +68,6 @@ async function uploadFiles(plugin: ObsidianS3, files: FileList) {
 	}
 }
 
-function generateResourceName(plugin: ObsidianS3, file: File) {
-	const activeFile = plugin.app.workspace.getActiveFile();
-	if (activeFile) {
-		return `${activeFile.basename}-${Date.now()}-${file.name}`
-	} else {
-		return `${Date.now()}-${file.name}`
-	}
-}
 
 function createResourceLink(plugin: ObsidianS3, fileName: string, file: File) {
 	const view = plugin.app.workspace.getActiveViewOfType(MarkdownView)
@@ -102,7 +94,6 @@ function createResourceLink(plugin: ObsidianS3, fileName: string, file: File) {
 	editor.transaction({
 		changes: [
 			{
-
 				from: { ...cursor, ch: 0, },
 				to: { ...cursor, ch: line.length, },
 				text: newLinkText + "\n",
@@ -167,15 +158,10 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	tryStartService(): boolean {
-		let { endPoint } = this.settings;
-		const { accessKey, secretKey, port, bucketName, folderName } = this.settings;
-		if (endPoint.startsWith('https://') || endPoint.startsWith('http://')) {
-			const url = new URL(endPoint);
-			endPoint = url.hostname;
-		}
-
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
+			const { endPoint, accessKey, secretKey, port, bucketName, folderName } = this.settings;
+
 			new Notice(`Creating S3 Client`);
 			this.s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName);
 			// Spawn http server 
@@ -183,7 +169,7 @@ export default class ObsidianS3 extends Plugin {
 			this.server.listen();
 			return true;
 		} else {
-			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.");
+			new Notice("Please fill out S3 credentials to enable the Obsidian S3 plugin.");
 			return false;
 		}
 	}

@@ -28,3 +28,7 @@ export async function getS3URLs(files: TFile[], vault: Vault) {
 	});
 	return obsidianIndex;
 }
+
+export function generateResourceName(file: File, parent?: string) {
+	return parent ? `${parent}-${Date.now()}-${file.name}` : `${Date.now()}-${file.name}`;
+}
