@@ -137,23 +137,23 @@ export default class ObsidianS3 extends Plugin {
 		new Notice('Indexing resources...');
 		let obsidianIndex = await getS3URLs(files, vault, this.url);
 		obsidianIndex = obsidianIndex.map((s) => getS3Path(s, this.url, this.settings.folderName))
-		console.log(obsidianIndex)
 
 		new Notice('Indexing S3 objects...');
 		const s3Index = await this.s3.listObjects();
-		console.log(s3Index);
 
 		const doDelete = s3Index.filter((i) => !obsidianIndex.includes(i.name));
 		if (doDelete.length === 0) {
 			new Notice("No object to delete.");
 			return;
 		}
+		console.log(doDelete);
+
 
 		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
 
 		for (let i = 0; i < doDelete.length; i++) {
-			// console.log(`S3: Deleting ${doDelete[i].name}`);
-			// await this.s3.removeObject(doDelete[i].name);
+			console.log(`S3: Deleting ${doDelete[i].name}`);
+			await this.s3.removeObject(doDelete[i].name);
 		}
 
 		new Notice(`Deleted ${doDelete.length} objects`)
