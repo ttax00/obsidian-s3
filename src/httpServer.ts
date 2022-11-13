@@ -1,14 +1,14 @@
 import http from 'http';
 import { ALLOWED_HEADERS, mimeType } from './constants';
-import { Client } from 'minio';
 import { Notice } from 'obsidian';
+import { S3Client } from './s3Client';
 
 function parseExt(url: string): string {
 	const arr = url.split('.');
 	return '.' + arr[arr.length - 1];
 }
 
-const setup = (client: Client, bucket: string, port: string) => {
+const setup = (client: S3Client, port: string) => {
 	const server = http.createServer(async function (req, res) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
 		res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD');
@@ -17,18 +17,18 @@ const setup = (client: Client, bucket: string, port: string) => {
 
 		if (!req.url) return new Notice(`unknown url: ${req.url}`);
 		const ext = parseExt(req.url);
-		const objName = decodeURI(req.url);
+		const path = decodeURI(req.url);
 
 		try {
-			console.log(`fetching object: ${objName}`);
-			const result = await client.getObject(bucket, objName);
+			console.log(`fetching ${path}`)
+			const result = await client.getObject(path);
 			res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
 			result.pipe(res);
 		} catch (e) {
 			res.statusCode = 500;
 			console.log(`Error getting the file: ${e}`);
 			res.end(`Error getting the file: ${e}.`);
-			new Notice(`Error: Unable to fetch ${objName}`)
+			new Notice(`Error: Unable to fetch ${path}`)
 		}
 	});
 

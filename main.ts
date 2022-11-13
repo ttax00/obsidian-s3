@@ -1,13 +1,12 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
-import { Client, BucketItem } from 'minio';
 import { SettingsTab } from 'src/settings';
 import exp from 'src/httpServer';
 import { mimeType } from 'src/constants';
-import internal from 'stream';
-import toIt from 'blob-to-it'
 import { URL } from 'url';
+import { S3Client } from 'src/s3Client';
+import { getS3Path, getS3URLs } from 'src/helper';
 
-interface ObsidianS3Settings {
+export interface ObsidianS3Settings {
 	accessKey: string;
 	secretKey: string;
 	endPoint: string;
@@ -44,29 +43,21 @@ function isValidSettings(settings: ObsidianS3Settings) {
 }
 
 async function uploadFiles(plugin: ObsidianS3, files: FileList) {
-	const { bucketName, folderName } = plugin.settings;
-
 	for (let i = 0; i < files.length; i += 1) {
 		const file = files[i];
 		const fileName = generateResourceName(plugin, file);
-		const name = folderName + '/' + fileName;
-		console.log(`Uploading: ${name}...`);
 
-		new Notice(`Uploading: ${name} ${file.size} bit...`);
+		new Notice(`Uploading: ${fileName} ${file.size} bit...`);
 		try {
-			const readable = internal.Readable.from(toIt(file));
 			let progress = 0;
-			readable.on('data', (chunk) => {
-				progress += chunk.length;
-			})
-
-			const handle = window.setInterval(() => new Notice(`Uploading: ${name} ${Math.round(progress / file.size * 100)}%`), 5000);
+			const handle = window.setInterval(() => new Notice(`Uploading: ${fileName} ${progress}%`), 5000);
 			plugin.registerInterval(handle);
-			readable.on('close', () => {
-				window.clearInterval(handle);
-				new Notice('Creating link...');
-			})
-			await plugin.client.putObject(bucketName, name, readable, file.size);
+			await plugin.s3.upload(file,
+				(prog) => progress = prog,
+				() => {
+					window.clearInterval(handle);
+				});
+
 			createResourceLink(plugin, fileName, file);
 		}
 		catch (e) {
@@ -126,7 +117,7 @@ function createResourceLink(plugin: ObsidianS3, fileName: string, file: File) {
 export default class ObsidianS3 extends Plugin {
 	settings: ObsidianS3Settings;
 	pluginName = "Obsidian S3";
-	client: Client;
+	s3: S3Client;
 	server: { listen(): void; close(): void; };
 	get url() {
 		return `http://localhost:${this.settings.port}/${this.settings.folderName}`
@@ -136,9 +127,8 @@ export default class ObsidianS3 extends Plugin {
 		console.log(`Loading ${this.pluginName}`);
 		await this.loadSettings();
 
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingsTab(this.app, this));
+
 		this.setupHandlers();
 		if (this.tryStartService()) {
 			this.addCommand({
@@ -150,76 +140,35 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	async clearUnusedCallback() {
-		new Notice('Indexing resources...');
-		const { bucketName, folderName } = this.settings;
-		const getS3Index = new Promise<BucketItem[]>((resolve, reject) => {
-			const s3Index: BucketItem[] = [];
-			this.client.listObjects(bucketName, folderName, true)
-				.on('data', (i) => {
-					s3Index.push(i)
-				})
-				.on('end', () => {
-					resolve(s3Index)
-				});
-		})
-
-		function getNameFromUrl(res: RegExpExecArray | null, plugin: ObsidianS3): string {
-			// Res should be ["...", "https://..."]
-			if (res) {
-				return decodeURI(res[1]).replace(plugin.url, plugin.settings.folderName);
-			} else {
-				return '';
-			}
-		}
-
 		const { vault } = this.app;
-		console.log("running cmd");
 		const files = vault.getMarkdownFiles();
-		const obsidianIndex: string[] = []
-		files.map(async (f) => {
-			const content = await vault.read(f);
-			if (!content.match(this.url)) return;
-			// matching markdown ![]() syntax
-			const matchLink = content.match(/!\[.*]\((.*)\)/g)?.filter((m) => m.includes(this.url));
-			if (matchLink && matchLink.length > 0) {
-				obsidianIndex.push(...matchLink.map((m) => {
-					const res = /!\[.*]\((.*)\)/.exec(m);
-					return getNameFromUrl(res, this);
-				}));
-			}
-			// matching <iframe src="...">
-			const matchIFrame = content.match(/src="([^"]*)"/g)?.filter((m) => m.includes(this.url));
-			if (matchIFrame && matchIFrame.length > 0) {
-				obsidianIndex.push(...matchIFrame.map((m) => {
-					const res = /src="([^"]*)"/.exec(m);
-					return getNameFromUrl(res, this);
-				}));
-			}
-		})
 
-		const s3Index = await getS3Index;
+		new Notice('Indexing resources...');
+		let obsidianIndex = await getS3URLs(files, vault);
+		obsidianIndex = obsidianIndex.map((s) => getS3Path(s, this.url, this.settings.folderName))
+
+		new Notice('Indexing S3 objects...');
+		const s3Index = await this.s3.listObjects();
 
 		const doDelete = s3Index.filter((i) => !obsidianIndex.includes(i.name));
 		if (doDelete.length === 0) {
-			new Notice("No items to delete.");
+			new Notice("No object to delete.");
 			return;
 		}
 
-		new Notice(`Deleting ${doDelete.length} objects...`);
+		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
 
 		for (let i = 0; i < doDelete.length; i++) {
-			console.log(`Deleting: ${doDelete[i].name}`);
-			await this.client.removeObject(bucketName, doDelete[i].name);
+			console.log(`S3: Deleting ${doDelete[i].name}`);
+			await this.s3.removeObject(doDelete[i].name);
 		}
 
-		new Notice(`Deleted ${doDelete.length} S3 objects`)
-		console.log("Deletion complete");
-
+		new Notice(`Deleted ${doDelete.length} objects`)
 	}
 
 	tryStartService(): boolean {
 		let { endPoint } = this.settings;
-		const { accessKey, secretKey, port, bucketName } = this.settings;
+		const { accessKey, secretKey, port, bucketName, folderName } = this.settings;
 		if (endPoint.startsWith('https://') || endPoint.startsWith('http://')) {
 			const url = new URL(endPoint);
 			endPoint = url.hostname;
@@ -228,15 +177,9 @@ export default class ObsidianS3 extends Plugin {
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
 			new Notice(`Creating S3 Client`);
-			this.client = new Client({
-				endPoint,
-				useSSL: true,
-				accessKey,
-				secretKey
-			});
-
+			this.s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName);
 			// Spawn http server 
-			this.server = exp(this.client, bucketName, port);
+			this.server = exp(this.s3, port);
 			this.server.listen();
 			return true;
 		} else {
@@ -258,7 +201,7 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
-		if (!this.client) {
+		if (!this.s3) {
 			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.")
 			return;
 		}
@@ -272,7 +215,7 @@ export default class ObsidianS3 extends Plugin {
 		await uploadFiles(this, files);
 	}
 	private async dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
-		if (!this.client) {
+		if (!this.s3) {
 			new Notice("Please fill out Obsidian S3 settings tab to enable the plugin.")
 			return;
 		}
@@ -294,7 +237,6 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	private setupHandlers() {
-
 		this.registerEvent(
 			this.app.workspace.on("editor-paste", this.pasteEventHandler.bind(this))
 		);
