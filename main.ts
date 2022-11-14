@@ -28,7 +28,9 @@ function isValidSettings(settings: ObsidianS3Settings) {
 export default class ObsidianS3 extends Plugin {
 	settings: ObsidianS3Settings;
 	pluginName = "Obsidian S3";
-	s3: S3Client;
+	get s3() {
+		return this.server.getClient(this.settings.activeClient);
+	}
 	server: S3Server;
 	credentialsError() {
 		new Notice("Please fill out S3 credentials to enable the Obsidian S3 plugin.");
@@ -44,7 +46,7 @@ export default class ObsidianS3 extends Plugin {
 		if (this.tryStartService()) {
 			this.addCommand({
 				id: 'obsidian-s3-clear-unused',
-				name: 'Clear unused s3 resources.',
+				name: 'Clear unused s3 objects.',
 				callback: this.clearUnusedCallback.bind(this),
 			});
 
@@ -102,9 +104,9 @@ export default class ObsidianS3 extends Plugin {
 			const { endPoint, accessKey, secretKey, port, bucketName, folderName } = this.settings;
 
 			new Notice(`Creating S3 Client`);
-			this.s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName, 0);
+			const s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName, "0");
 			// Spawn http server 
-			this.server = new S3Server(this.s3, port);
+			this.server = new S3Server(s3, port);
 			this.server.listen();
 			return true;
 		} else {

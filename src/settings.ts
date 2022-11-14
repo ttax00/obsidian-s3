@@ -8,6 +8,7 @@ export interface ObsidianS3Settings {
 	folderName: string;
 	port: string;
 	bucketName: string;
+	activeClient: string;
 }
 
 export const DEFAULT_SETTINGS: ObsidianS3Settings = {
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: ObsidianS3Settings = {
 	folderName: 'obsidian',
 	port: '4998',
 	bucketName: '',
+	activeClient: "0",
 }
 
 
