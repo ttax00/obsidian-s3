@@ -19,8 +19,9 @@ An [Obsidian](https://obsidian.md/) plugin for storage and retrieval of media at
 - [x] Generate links for videos.
 - [x] Generate links for audio.
 - [ ] Returning download links for un-supported resource? (pdf, txt, ...).
-### Helpers
+### Helpers/Misc
 - [x] Command: delete un-used resources.
+- [x] Command: Show bucket size
 - [ ] Rename links on port/foldername changes.
 
 ### Unplanned

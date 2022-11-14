@@ -29,10 +29,10 @@ export class S3Client {
 		});
 	}
 
-	public listObjects() {
+	public listObjects(all?: boolean) {
 		return new Promise<BucketItem[]>((resolve) => {
 			const s3Index: BucketItem[] = [];
-			this.client.listObjects(this.bucketName, this.folderName, true)
+			this.client.listObjects(this.bucketName, all ? undefined : this.folderName, true)
 				.on('data', (i) => {
 					s3Index.push(i)
 				})
@@ -62,17 +62,14 @@ export class S3Client {
 		return this.client.removeObject(this.bucketName, path);
 	}
 
-	public createResourceLink(url: string, fileName: string, file: File): string {
+	public createObjURL(url: string, fileName: string): string {
 		// http://localhost:port/folder/object?client=id&bucket=bucketName.
 		url = encodeURI(`${url}/${this.folderName}/${fileName}?client=${this.id}&bucket=${this.bucketName}`);
+		return url;
+	}
 
-		let newLinkText = `![S3 File](${url})`
-		if (file.type.startsWith('video') || file.type.startsWith('audio')) {
-			newLinkText = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
-		} else if (file.type === 'text/html') {
-			newLinkText = `<iframe src="${url}"></iframe>`
-		}
-		return newLinkText;
+	public async getBucketSize(includeNonObsidian?: boolean) {
+		return (await this.listObjects(includeNonObsidian)).map((i) => i.size).reduce((p, c) => p + c)
 	}
 }
 

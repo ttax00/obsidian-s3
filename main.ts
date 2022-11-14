@@ -3,6 +3,7 @@ import { SettingsTab } from 'src/settings';
 import { S3Server } from 'src/httpServer';
 import { mimeType } from 'src/constants';
 import { S3Client } from 'src/s3Client';
+import prettyBytes from 'pretty-bytes';
 import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
 
 export interface ObsidianS3Settings {
@@ -63,6 +64,24 @@ export default class ObsidianS3 extends Plugin {
 				name: 'Clear unused s3 resources.',
 				callback: this.clearUnusedCallback.bind(this),
 			});
+
+			this.addCommand({
+				id: 'obsidian-s3-get-obsidian-size',
+				name: 'Get total obsidian s3 usage.',
+				callback: async () => {
+					new Notice("Indexing...");
+					new Notice(`Total Obsidian usage: ${prettyBytes(await this.s3.getBucketSize())}`)
+				},
+			});
+
+			this.addCommand({
+				id: 'obsidian-s3-get-size',
+				name: 'Get total s3 usage.',
+				callback: async () => {
+					new Notice("Indexing...");
+					new Notice(`Total usage: ${prettyBytes(await this.s3.getBucketSize(true))}`)
+				},
+			});
 		}
 	}
 
@@ -72,7 +91,8 @@ export default class ObsidianS3 extends Plugin {
 
 		new Notice('Indexing resources...');
 		let obsidianIndex = await getS3URLs(files, vault, this.server.url);
-		obsidianIndex = obsidianIndex.map((s) => getS3Path(s, this.server.url, this.settings.folderName))
+		obsidianIndex = obsidianIndex.map((s) => getS3Path(s))
+		console.log(obsidianIndex);
 
 		new Notice('Indexing S3 objects...');
 		const s3Index = await this.s3.listObjects();
@@ -87,11 +107,12 @@ export default class ObsidianS3 extends Plugin {
 		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
 
 		for (let i = 0; i < doDelete.length; i++) {
-			console.log(`S3: Deleting ${doDelete[i].name}`);
-			await this.s3.removeObject(doDelete[i].name);
+			// console.log(`S3: Deleting ${doDelete[i].name}`);
+			// await this.s3.removeObject(doDelete[i].name);
 		}
 
 		new Notice(`Deleted ${doDelete.length} objects`)
+		new Notice(`Current bucket size ${prettyBytes(await this.s3.getBucketSize())}`)
 	}
 
 	tryStartService(): boolean {
@@ -184,13 +205,24 @@ export default class ObsidianS3 extends Plugin {
 
 			new Notice(`Uploading: ${fileName} ${file.size} bit...`);
 			try {
+				const s3 = this.s3;
 				let progress = 0;
 				const handle = window.setInterval(() => new Notice(`Uploading: ${fileName} ${progress}%`), 5000);
 				this.registerInterval(handle);
-				await this.s3.upload(file, fileName,
+				await s3.upload(file, fileName,
 					(prog) => progress = prog,
 					() => window.clearInterval(handle));
-				this.writeLine(this.s3.createResourceLink(this.server.url, fileName, file));
+
+				const url = s3.createObjURL(this.server.url, fileName);
+
+				let linkTxt = `![S3 File](${url})`
+				if (file.type.startsWith('video') || file.type.startsWith('audio')) {
+					linkTxt = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
+				} else if (file.type === 'text/html') {
+					linkTxt = `<iframe src="${url}"></iframe>`
+				}
+
+				this.writeLine(linkTxt);
 			}
 			catch (e) {
 				new Notice(`Error: Unable to upload ${fileName}. Make sure your S3 credentials are correct.`);
