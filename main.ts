@@ -1,5 +1,5 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS, ObsidianS3Settings, SettingsTab } from 'src/settings';
+import { DEFAULT_SETTINGS, IObsidianSetting, SettingsTab } from 'src/settings';
 import { S3Server } from 'src/httpServer';
 import { mimeType } from 'src/constants';
 import { S3Client } from 'src/s3Client';
@@ -20,13 +20,18 @@ function allFilesAreValidUploads(files: FileList) {
 	return true;
 }
 
-function isValidSettings(settings: ObsidianS3Settings) {
-	if (settings.accessKey != '' && settings.secretKey != '' && settings.endPoint != '' && settings.bucketName != '') return true;
-	return false;
+function isValidSettings(settings: IObsidianSetting) {
+	const { clients, port } = settings;
+	if (isNaN(parseInt(port))) return false;
+	for (let i = 0; i < clients.length; i++) {
+		const { accessKey, secretKey, endPoint, bucketName } = clients[i];
+		if (accessKey == '' || secretKey == '' || endPoint == '' || bucketName == '') return false;
+	}
+	return true;
 }
 
 export default class ObsidianS3 extends Plugin {
-	settings: ObsidianS3Settings;
+	settings: IObsidianSetting;
 	pluginName = "Obsidian S3";
 	get s3() {
 		return this.server.getClient(this.settings.activeClient);
@@ -36,6 +41,16 @@ export default class ObsidianS3 extends Plugin {
 		new Notice("Please fill out S3 credentials to enable the Obsidian S3 plugin.");
 		return true;
 	}
+	getActive() {
+		const res = this.settings.clients.find((c) => c.id === this.settings.activeClient);
+		if (res) return res;
+		else return this.settings.clients[0];
+	}
+
+	getClientIDs() {
+		return this.settings.clients.map((c) => c.id);
+	}
+
 	async onload() {
 		console.log(`Loading ${this.pluginName}`);
 		await this.loadSettings();
@@ -67,6 +82,8 @@ export default class ObsidianS3 extends Plugin {
 					new Notice(`Total usage: ${prettyBytes(await this.s3.getBucketSize(true))}`)
 				},
 			});
+		} else {
+			return this.credentialsError();
 		}
 	}
 
@@ -101,16 +118,18 @@ export default class ObsidianS3 extends Plugin {
 	tryStartService(): boolean {
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
-			const { endPoint, accessKey, secretKey, port, bucketName, folderName } = this.settings;
-
+			console.log(this.getActive());
 			new Notice(`Creating S3 Client`);
-			const s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName, "0");
+			const s3: S3Client[] = [];
+			this.settings.clients.forEach((c) => {
+				s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.bucketName, c.folderName, c.id));
+			})
 			// Spawn http server 
-			this.server = new S3Server(s3, port);
+			this.server = new S3Server(s3, this.settings.port);
 			this.server.listen();
 			return true;
 		} else {
-			return this.credentialsError();
+			return false;
 		}
 	}
 
@@ -120,6 +139,7 @@ export default class ObsidianS3 extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		console.log(this.settings);
 	}
 
 	async saveSettings() {

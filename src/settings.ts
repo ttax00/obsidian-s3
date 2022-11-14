@@ -1,7 +1,7 @@
 import ObsidianS3 from "main";
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 
-export interface ObsidianS3Settings {
+export interface IS3SettingsManager {
 	accessKey: string;
 	secretKey: string;
 	endPoint: string;
@@ -11,16 +11,36 @@ export interface ObsidianS3Settings {
 	activeClient: string;
 }
 
-export const DEFAULT_SETTINGS: ObsidianS3Settings = {
-	accessKey: '',
-	secretKey: '',
-	endPoint: '',
-	folderName: 'obsidian',
-	port: '4998',
-	bucketName: '',
-	activeClient: "0",
+export interface S3ClientSettings {
+	accessKey: string;
+	secretKey: string;
+	endPoint: string;
+	folderName: string;
+	bucketName: string;
+	id: string;
 }
 
+
+export interface IObsidianSetting {
+	clients: S3ClientSettings[];
+	port: string;
+	activeClient: string;
+}
+
+export const DEFAULT_CLIENT: S3ClientSettings = {
+	accessKey: "",
+	secretKey: "",
+	endPoint: "",
+	folderName: "obsidian",
+	bucketName: "",
+	id: "default"
+}
+
+export const DEFAULT_SETTINGS: IObsidianSetting = {
+	clients: [DEFAULT_CLIENT],
+	port: '4998',
+	activeClient: 'default',
+}
 
 export class SettingsTab extends PluginSettingTab {
 	plugin: ObsidianS3;
@@ -30,21 +50,66 @@ export class SettingsTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+
+
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
 		containerEl.createEl('h2', { text: 'Settings for your S3 cloud storage.' });
+		containerEl.createEl('h3', { text: 'Server Settings.' });
+		new Setting(containerEl)
+			.setName('Server Port (Default: 4998)')
+			.addText(text => text
+				.setPlaceholder(this.plugin.settings.port)
+				.setValue(this.plugin.settings.port ?? DEFAULT_SETTINGS.port)
+				.onChange(async (value) => {
+					this.plugin.settings.port = value.trim() ?? DEFAULT_SETTINGS.port;
+					await this.plugin.saveSettings();
+				}));
+
+		containerEl.createEl('h3', { text: 'Client Settings.' });
+
+		new Setting(containerEl).addDropdown((c) => {
+			const o: Record<string, string> = {}
+			this.plugin.getClientIDs().forEach((i) => {
+				o[i] = i;
+			})
+			c.addOptions(o)
+				.setValue(this.plugin.settings.activeClient)
+				.onChange(async (v) => {
+					this.plugin.settings.activeClient = v;
+					await this.plugin.saveSettings();
+					this.display();
+				});
+
+		}).setName("Active S3 Client");
+
+		new Setting(containerEl)
+			.setName('ID')
+			.setDesc('S3 Client unique id')
+			.addText(text => text
+				.setPlaceholder('gateway.storjshare.io')
+				.setValue(this.plugin.getActive().id)
+				.setDisabled(this.plugin.getActive().id === DEFAULT_CLIENT.id)
+				.onChange(async (value) => {
+					if (this.plugin.getClientIDs().includes(value)) {
+						new Notice(`ID must be unique: ${value}`);
+					} else {
+						this.plugin.getActive().id = value.trim();
+						await this.plugin.saveSettings();
+					}
+				}));
+
 
 		new Setting(containerEl)
 			.setName('Endpoint')
 			.setDesc('Your S3 API Endpoint')
 			.addText(text => text
 				.setPlaceholder('gateway.storjshare.io')
-				.setValue(this.plugin.settings.endPoint ?? '')
+				.setValue(this.plugin.getActive().endPoint)
 				.onChange(async (value) => {
-					this.plugin.settings.endPoint = value.trim();
+					this.plugin.getActive().endPoint = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -53,9 +118,9 @@ export class SettingsTab extends PluginSettingTab {
 			.setDesc('Your S3 Access Key')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.accessKey ?? '')
+				.setValue(this.plugin.getActive().accessKey)
 				.onChange(async (value) => {
-					this.plugin.settings.accessKey = value.trim();
+					this.plugin.getActive().accessKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -65,29 +130,20 @@ export class SettingsTab extends PluginSettingTab {
 			.setDesc('Your S3 Secret Key')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.secretKey ?? '')
+				.setValue(this.plugin.getActive().secretKey)
 				.onChange(async (value) => {
-					this.plugin.settings.secretKey = value.trim();
+					this.plugin.getActive().secretKey = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl)
-			.setName('Server Port')
-			.addText(text => text
-				.setPlaceholder(this.plugin.settings.port)
-				.setValue(this.plugin.settings.port ?? '')
-				.onChange(async (value) => {
-					this.plugin.settings.port = value.trim();
-					await this.plugin.saveSettings();
-				}));
 
 		new Setting(containerEl)
 			.setName('Bucket Name')
 			.addText(text => text
 				.setPlaceholder('')
-				.setValue(this.plugin.settings.bucketName ?? '')
+				.setValue(this.plugin.getActive().bucketName)
 				.onChange(async (value) => {
-					this.plugin.settings.bucketName = value.trim();
+					this.plugin.getActive().bucketName = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -95,10 +151,51 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Folder Name')
 			.addText(text => text
 				.setPlaceholder(this.plugin.settings.port)
-				.setValue(this.plugin.settings.folderName)
+				.setValue(this.plugin.getActive().folderName)
 				.onChange(async (value) => {
-					this.plugin.settings.folderName = value.trim();
+					this.plugin.getActive().folderName = value.trim();
 					await this.plugin.saveSettings();
 				}));
+
+		containerEl.createEl('h3', { text: 'Misc.' });
+		new Setting(containerEl).addButton((c) => {
+			c.setButtonText("Reload")
+				.onClick(async () => {
+					await this.plugin.saveSettings();
+					this.plugin.server.close();
+					this.plugin.tryStartService();
+					this.display();
+				})
+		}).setName("Save settings and reload plugin");
+
+		new Setting(containerEl).setName("ADD or REMOVE client.")
+			.addButton((c) => {
+				c.setButtonText("ADD")
+					.onClick(async () => {
+						this.plugin.settings.clients.push({
+							accessKey: '',
+							secretKey: '',
+							endPoint: '',
+							folderName: 'obsidian',
+							bucketName: '',
+							id: 'name-me',
+						})
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			})
+			.addButton((c) => {
+				c.setButtonText("REMOVE")
+					.onClick(async () => {
+						const active = this.plugin.getActive();
+						if (active.id === DEFAULT_CLIENT.id) {
+							return new Notice("Cannot remove default client!");
+						}
+						this.plugin.settings.clients.remove(this.plugin.getActive());
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+
 	}
 }

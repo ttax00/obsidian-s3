@@ -18,9 +18,8 @@ export class S3Server {
 		if (res) return res;
 		else return this._client[0]
 	}
-
-	constructor(client: S3Client, port: string) {
-		this._client = [client];
+	constructor(client: S3Client[], port: string) {
+		this._client = client;
 		this.port = port;
 	}
 	public listen() {
