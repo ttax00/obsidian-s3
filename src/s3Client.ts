@@ -63,7 +63,7 @@ export class S3Client {
 	}
 
 	public createResourceLink(url: string, fileName: string, file: File): string {
-		// http://localhost:port/folder/object?client=uniqueClientName.
+		// http://localhost:port/folder/object?client=id&bucket=bucketName.
 		url = encodeURI(`${url}/${this.folderName}/${fileName}?client=${this.id}&bucket=${this.bucketName}`);
 
 		let newLinkText = `![S3 File](${url})`

@@ -103,6 +103,7 @@ export default class ObsidianS3 extends Plugin {
 			this.s3 = new S3Client(endPoint, accessKey, secretKey, bucketName, folderName, 0);
 			// Spawn http server 
 			this.server = new S3Server(this.s3, port);
+			this.server.listen();
 			return true;
 		} else {
 			return this.credentialsError();
