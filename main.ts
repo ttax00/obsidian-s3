@@ -1,28 +1,11 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
-import { SettingsTab } from 'src/settings';
+import { DEFAULT_SETTINGS, ObsidianS3Settings, SettingsTab } from 'src/settings';
 import { S3Server } from 'src/httpServer';
 import { mimeType } from 'src/constants';
 import { S3Client } from 'src/s3Client';
 import prettyBytes from 'pretty-bytes';
 import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
 
-export interface ObsidianS3Settings {
-	accessKey: string;
-	secretKey: string;
-	endPoint: string;
-	folderName: string;
-	port: string;
-	bucketName: string;
-}
-
-const DEFAULT_SETTINGS: ObsidianS3Settings = {
-	accessKey: '',
-	secretKey: '',
-	endPoint: '',
-	folderName: 'obsidian',
-	port: '4998',
-	bucketName: '',
-}
 
 function allFilesAreValidUploads(files: FileList) {
 	if (files.length === 0) return false;
@@ -92,7 +75,6 @@ export default class ObsidianS3 extends Plugin {
 		new Notice('Indexing resources...');
 		let obsidianIndex = await getS3URLs(files, vault, this.server.url);
 		obsidianIndex = obsidianIndex.map((s) => getS3Path(s))
-		console.log(obsidianIndex);
 
 		new Notice('Indexing S3 objects...');
 		const s3Index = await this.s3.listObjects();
@@ -102,13 +84,12 @@ export default class ObsidianS3 extends Plugin {
 			new Notice("No object to delete.");
 			return;
 		}
-		console.log(doDelete);
 
 		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
 
 		for (let i = 0; i < doDelete.length; i++) {
-			// console.log(`S3: Deleting ${doDelete[i].name}`);
-			// await this.s3.removeObject(doDelete[i].name);
+			console.log(`S3: Deleting ${doDelete[i].name}`);
+			await this.s3.removeObject(doDelete[i].name);
 		}
 
 		new Notice(`Deleted ${doDelete.length} objects`)

@@ -1,6 +1,25 @@
 import ObsidianS3 from "main";
 import { App, PluginSettingTab, Setting } from "obsidian";
 
+export interface ObsidianS3Settings {
+	accessKey: string;
+	secretKey: string;
+	endPoint: string;
+	folderName: string;
+	port: string;
+	bucketName: string;
+}
+
+export const DEFAULT_SETTINGS: ObsidianS3Settings = {
+	accessKey: '',
+	secretKey: '',
+	endPoint: '',
+	folderName: 'obsidian',
+	port: '4998',
+	bucketName: '',
+}
+
+
 export class SettingsTab extends PluginSettingTab {
 	plugin: ObsidianS3;
 

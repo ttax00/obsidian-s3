@@ -9,6 +9,10 @@ An [Obsidian](https://obsidian.md/) plugin for storage and retrieval of media at
 - Copy over `main.js`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
 
 ## Feature list
+Supported files (limited by files allowed to be linked by Obsidian): 
+- images (.ico, .png, .jpg, .gif).
+- videos (.mp4).
+- audio (.mp3, .wav).
 ### Upload
 - [x] Upload on paste.
 - [x] Upload on drag-n-drop.

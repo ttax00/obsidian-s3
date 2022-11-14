@@ -4,8 +4,8 @@ export const ALLOWED_HEADERS =
 export const mimeType = new Map([
 	// ['.html', 'text/html'],
 	// ['.js', 'text/javascript'],
+	// ['.css', 'text/css'],
 	['.ico', 'image/x-icon'],
-	['.css', 'text/css'],
 	['.png', 'image/png'],
 	['.jpg', 'image/jpeg'],
 	['.gif', 'image/gif'],
