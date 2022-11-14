@@ -57,7 +57,6 @@ export class S3Server {
 	}
 
 	public close() {
-		new Notice("Closing S3 server.");
 		this.server.close();
 	}
 

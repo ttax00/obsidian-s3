@@ -20,7 +20,6 @@ export class S3Client {
 		this.folderName = folderName;
 		this.id = id
 
-		new Notice("Creating S3 Client");
 		this.client = new Client({
 			endPoint,
 			accessKey,
