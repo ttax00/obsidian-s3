@@ -67,21 +67,17 @@ export default class ObsidianS3 extends Plugin {
 
 			this.addCommand({
 				id: 'obsidian-s3-get-obsidian-size',
-				name: 'Get total obsidian s3 usage.',
+				name: 'Get usage statistics.',
 				callback: async () => {
 					new Notice("Indexing...");
-					new Notice(`Total Obsidian usage: ${prettyBytes(await this.s3.getBucketSize())}`)
+					const ids = this.getClientIDs();
+					for (let i = 0; i < ids.length; i++) {
+						const s3 = this.server.getClient(ids[i])
+						new Notice(`[${ids[i]} client]\nObsidian usage: ${prettyBytes(await s3.getBucketSize())}\nAll usage: ${prettyBytes(await s3.getBucketSize(true))}`);
+					}
 				},
 			});
 
-			this.addCommand({
-				id: 'obsidian-s3-get-size',
-				name: 'Get total s3 usage.',
-				callback: async () => {
-					new Notice("Indexing...");
-					new Notice(`Total usage: ${prettyBytes(await this.s3.getBucketSize(true))}`)
-				},
-			});
 		} else {
 			return this.credentialsError();
 		}
@@ -92,27 +88,31 @@ export default class ObsidianS3 extends Plugin {
 		const files = vault.getMarkdownFiles();
 
 		new Notice('Indexing resources...');
-		let obsidianIndex = await getS3URLs(files, vault, this.server.url);
-		obsidianIndex = obsidianIndex.map((s) => getS3Path(s))
+		const obsidianUrls = (await getS3URLs(files, vault, this.server.url)).map((u) => new URL(u));
+		console.log(obsidianUrls);
 
-		new Notice('Indexing S3 objects...');
-		const s3Index = await this.s3.listObjects();
+		const ids = this.getClientIDs();
+		for (let i = 0; i < ids.length; i++) {
+			new Notice(`[${ids[i]}] Indexing S3 objects...`);
+			const filter = obsidianUrls.filter((u) => u.searchParams.get("client") === ids[i]).map((u) => getS3Path(u));
+			console.log(filter);
 
-		const doDelete = s3Index.filter((i) => !obsidianIndex.includes(i.name));
-		if (doDelete.length === 0) {
-			new Notice("No object to delete.");
-			return;
+			const s3 = this.server.getClient(ids[i]);
+			const s3Index = await s3.listObjects();
+			const doDelete = s3Index.filter((i) => !filter.includes(i.name));
+			if (doDelete.length === 0) {
+				new Notice(`[${ids[i]}] No object to delete.`);
+				continue;
+			}
+			new Notice(`[${ids[i]}] Found ${doDelete.length} un-used objects, deleting...`);
+			for (let i = 0; i < doDelete.length; i++) {
+				console.log(`[${ids[i]}] S3: Deleting ${doDelete[i].name}`);
+				// await this.s3.removeObject(doDelete[i].name);
+			}
+			new Notice(`[${ids[i]}] Deleted ${doDelete.length} objects.`)
+			new Notice(`[${ids[i]}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`)
 		}
 
-		new Notice(`Found ${doDelete.length} un-used objects, deleting...`);
-
-		for (let i = 0; i < doDelete.length; i++) {
-			console.log(`S3: Deleting ${doDelete[i].name}`);
-			await this.s3.removeObject(doDelete[i].name);
-		}
-
-		new Notice(`Deleted ${doDelete.length} objects`)
-		new Notice(`Current bucket size ${prettyBytes(await this.s3.getBucketSize())}`)
 	}
 
 	tryStartService(): boolean {
