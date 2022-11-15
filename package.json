@@ -32,6 +32,7 @@
 	"dependencies": {
 		"@types/minio": "^7.0.14",
 		"blob-to-it": "^2.0.0",
-		"minio": "^7.0.32"
+		"minio": "^7.0.32",
+		"pretty-bytes": "^6.0.0"
 	}
 }
