@@ -18,7 +18,7 @@ jobs:
 
   build: 
     runs-on: ubuntu-latest
-        steps:
+    steps:
       - name: install dependencies
         run: npm i
       - name: run build
