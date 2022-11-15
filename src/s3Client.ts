@@ -1,6 +1,5 @@
 import blobToIt from "blob-to-it";
 import { BucketItem, Client } from "minio";
-import { Notice } from "obsidian";
 import { join } from "path";
 import internal from "stream";
 

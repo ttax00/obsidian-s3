@@ -9,25 +9,35 @@ import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
 
 function allFilesAreValidUploads(files: FileList) {
 	if (files.length === 0) return false;
-
+	let checked = true;
+	console.log(files);
 	for (let i = 0; i < files.length; i += 1) {
-		if (!Array.from(mimeType.values()).includes(files[i].type) || files[i].size == 0) {
-			new Notice(`File of type ${files[i].type} is not supported by Obsidian with external links.`)
-			return false;
+		if (files[i].size == 0) {
+			new Notice(`Error: File is of 0 size.`);
+			checked = false;
+		}
+		if (!Array.from(mimeType.values()).includes(files[i].type)) {
+			new Notice(`Error: File of type ${files[i].type} is not supported by Obsidian with external links.`);
+			checked = false;
 		}
 	}
 
-	return true;
+	return checked;
 }
 
 function isValidSettings(settings: IObsidianSetting) {
 	const { clients, port } = settings;
 	if (isNaN(parseInt(port))) return false;
+	let check = true;
 	for (let i = 0; i < clients.length; i++) {
 		const { accessKey, secretKey, endPoint, bucketName } = clients[i];
-		if (accessKey == '' || secretKey == '' || endPoint == '' || bucketName == '') return false;
+		if (accessKey == '' || secretKey == '' || endPoint == '' || bucketName == '') {
+			new Notice(`Please fill in the parameters for ${clients[i].id}`);
+			check = false;
+		}
+
 	}
-	return true;
+	return check;
 }
 
 export default class ObsidianS3 extends Plugin {
@@ -89,13 +99,11 @@ export default class ObsidianS3 extends Plugin {
 
 		new Notice('Indexing resources...');
 		const obsidianUrls = (await getS3URLs(files, vault, this.server.url)).map((u) => new URL(u));
-		console.log(obsidianUrls);
 
 		const ids = this.getClientIDs();
 		for (let i = 0; i < ids.length; i++) {
 			new Notice(`[${ids[i]}] Indexing S3 objects...`);
 			const filter = obsidianUrls.filter((u) => u.searchParams.get("client") === ids[i]).map((u) => getS3Path(u));
-			console.log(filter);
 
 			const s3 = this.server.getClient(ids[i]);
 			const s3Index = await s3.listObjects();
@@ -118,8 +126,7 @@ export default class ObsidianS3 extends Plugin {
 	tryStartService(): boolean {
 		// Only create clients when settings are valid.
 		if (isValidSettings(this.settings)) {
-			console.log(this.getActive());
-			new Notice(`Creating S3 Client`);
+			new Notice(`Creating S3 Clients`);
 			const s3: S3Client[] = [];
 			this.settings.clients.forEach((c) => {
 				s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.bucketName, c.folderName, c.id));
@@ -139,7 +146,6 @@ export default class ObsidianS3 extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		console.log(this.settings);
 	}
 
 	async saveSettings() {
@@ -206,7 +212,7 @@ export default class ObsidianS3 extends Plugin {
 			const file = files[i];
 			const fileName = generateResourceName(file.name, this.app.workspace.getActiveFile()?.basename);
 
-			new Notice(`Uploading: ${fileName} ${file.size} bit...`);
+			new Notice(`Uploading: ${fileName} ${prettyBytes(file.size)} ...`);
 			try {
 				const s3 = this.s3;
 				let progress = 0;
