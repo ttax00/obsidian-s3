@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v3
       - name: install dependencies
         run: npm i
       - name: run tests
@@ -19,6 +20,7 @@ jobs:
   build: 
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: install dependencies
         run: npm i
       - name: run build
