@@ -1,4 +1,4 @@
-import ObsidianS3 from "main";
+import ObsidianS3, { server, settings } from "main";
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 
 export interface IS3SettingsManager {
@@ -61,10 +61,10 @@ export class SettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Server Port (Default: 4998)')
 			.addText(text => text
-				.setPlaceholder(this.plugin.settings.port)
-				.setValue(this.plugin.settings.port ?? DEFAULT_SETTINGS.port)
+				.setPlaceholder(settings.port)
+				.setValue(settings.port ?? DEFAULT_SETTINGS.port)
 				.onChange(async (value) => {
-					this.plugin.settings.port = value.trim() ?? DEFAULT_SETTINGS.port;
+					settings.port = value.trim() ?? DEFAULT_SETTINGS.port;
 					await this.plugin.saveSettings();
 				}));
 
@@ -76,9 +76,9 @@ export class SettingsTab extends PluginSettingTab {
 				o[i] = i;
 			})
 			c.addOptions(o)
-				.setValue(this.plugin.settings.activeClient)
+				.setValue(settings.activeClient)
 				.onChange(async (v) => {
-					this.plugin.settings.activeClient = v;
+					settings.activeClient = v;
 					await this.plugin.saveSettings();
 					this.display();
 				});
@@ -150,7 +150,7 @@ export class SettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Folder Name')
 			.addText(text => text
-				.setPlaceholder(this.plugin.settings.port)
+				.setPlaceholder(settings.port)
 				.setValue(this.plugin.getActive().folderName)
 				.onChange(async (value) => {
 					this.plugin.getActive().folderName = value.trim();
@@ -162,7 +162,7 @@ export class SettingsTab extends PluginSettingTab {
 			c.setButtonText("Reload")
 				.onClick(async () => {
 					await this.plugin.saveSettings();
-					this.plugin.server.close();
+					server.close();
 					this.plugin.tryStartService();
 					this.display();
 				})
@@ -172,7 +172,7 @@ export class SettingsTab extends PluginSettingTab {
 			.addButton((c) => {
 				c.setButtonText("ADD")
 					.onClick(async () => {
-						this.plugin.settings.clients.push({
+						settings.clients.push({
 							accessKey: '',
 							secretKey: '',
 							endPoint: '',
@@ -191,7 +191,7 @@ export class SettingsTab extends PluginSettingTab {
 						if (active.id === DEFAULT_CLIENT.id) {
 							return new Notice("Cannot remove default client!");
 						}
-						this.plugin.settings.clients.remove(this.plugin.getActive());
+						settings.clients.remove(this.plugin.getActive());
 						await this.plugin.saveSettings();
 						this.display();
 					});

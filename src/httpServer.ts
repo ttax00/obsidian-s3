@@ -6,10 +6,11 @@ function parseExt(url: string): string {
 	const arr = url.split('.');
 	return '.' + arr[arr.length - 1];
 }
+
 export class S3Server {
 	_client: S3Client[];
 	port: string;
-	server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
+	server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | undefined;
 	get url() {
 		return `http://localhost:${this.port}`
 	}
@@ -42,24 +43,23 @@ export class S3Server {
 		const ext = parseExt(url.pathname);
 		const path = decodeURI(url.pathname);
 		console.log(`fetching: ${url.toString()}`);
+		const client = url.searchParams.get("client");
+		const bucket = url.searchParams.get("bucket");
 
 
 		try {
-			const result = await this.getClient(url.searchParams.get("client"))?.getObject(path, url.searchParams.get("bucket"));
+			const result = await this.getClient(client)?.getObject(path, bucket);
 			res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
 			result?.pipe(res);
 		} catch (e) {
 			res.statusCode = 500;
 			console.log(`Error getting the file: ${e}`);
 			res.end(`Error getting the file: ${e}.`);
-			new Notice(`S3: Unable to fetch ${url.toString()}`)
+			new Notice(`S3: Unable to fetch ${path} \nIs client(${client}) credentials correct?`);
 		}
 	}
 
 	public close() {
-		this.server.close();
+		if (this.server) this.server.close();
 	}
-
-
-
 }
