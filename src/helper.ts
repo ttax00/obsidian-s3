@@ -1,13 +1,15 @@
 import { TFile, Vault } from "obsidian";
 
-export function getS3Path(res: string): string {
-	const uri = new URL(encodeURI(res));
-	return uri.pathname.slice(1);
+export function getS3Path(res: string | URL): string {
+	if (typeof res === 'string') {
+		res = new URL(encodeURI(res));
+	}
+	return decodeURI(res.pathname).slice(1);
 }
 
 export function matchS3URLs(content: string, url: string): string[] | null {
-	const reg = new RegExp(`${url}\\/[^"\\]\\)]*`, 'g');
-	if (!content.match(this.url)) return null;
+	const reg = new RegExp(`${url}\\/[^"\\]\\)\\s]*`, 'g');
+	if (!content.match(url)) return null;
 	return content.match(reg);
 }
 
