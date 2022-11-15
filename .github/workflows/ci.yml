@@ -1,0 +1,25 @@
+name: Typescript
+
+on:
+  push:
+    branches: ['master']
+  pull_request:
+    branches: ['master']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: install dependencies
+        run: npm i
+      - name: run tests
+        run: npm run test
+
+  build: 
+    runs-on: ubuntu-latest
+        steps:
+      - name: install dependencies
+        run: npm i
+      - name: run build
+        run: npm run build
