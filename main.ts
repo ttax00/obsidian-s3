@@ -49,7 +49,7 @@ function createClients(clientSettings: S3ClientSettings[]) {
 }
 
 export let settings: IObsidianSetting = DEFAULT_SETTINGS;
-export let server: S3Server | undefined = new S3Server(createClients(settings.clients), settings.port);
+export let server: S3Server = new S3Server([], settings.port);
 export default class ObsidianS3 extends Plugin {
 	pluginName = "Obsidian S3";
 	get s3() {
