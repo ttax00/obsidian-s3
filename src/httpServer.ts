@@ -1,10 +1,11 @@
 import http from 'http';
-import { ALLOWED_HEADERS, mimeType } from './constants';
+import { ALLOWED_HEADERS } from './constants';
 import { Notice } from 'obsidian';
 import { S3Client } from './s3Client';
+import { mimeType } from './settings';
 function parseExt(url: string): string {
 	const arr = url.split('.');
-	return '.' + arr[arr.length - 1];
+	return arr[arr.length - 1];
 }
 
 export class S3Server {
@@ -49,7 +50,7 @@ export class S3Server {
 		void (async () => {
 			try {
 				const result = await this.getClient(client)?.getObject(path, bucket);
-				res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
+				res.setHeader('Content-type', mimeType.getMIME(ext) || 'text/plain');
 				result?.pipe(res);
 			} catch (e) {
 				res.statusCode = 500;
