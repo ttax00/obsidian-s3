@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "An Obsidian plugin for storage and retrieval of media attachments on S3 compatible services.",
 	"main": "main.js",
-	"packageManager": "npm@8.19.2",
+	"packageManager": "pnpm",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"clean": "rimraf main.js",
