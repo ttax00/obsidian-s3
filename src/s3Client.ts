@@ -1,11 +1,12 @@
 import blobToIt from "blob-to-it";
 import { BucketItem, Client } from "minio";
+import { Notice } from "obsidian";
 import { join } from "path";
 import internal from "stream";
 
 export class S3Client {
 	id: string;
-	client: Client;
+	client: Client | null;
 	bucketName: string;
 	folderName: string;
 
@@ -15,22 +16,29 @@ export class S3Client {
 			endPoint = url.hostname;
 		}
 
+
 		this.bucketName = bucketName;
 		this.folderName = folderName;
 		this.id = id
+		try {
+			this.client = new Client({
+				endPoint,
+				accessKey,
+				secretKey,
+				useSSL: true
+			});
+		} catch (e) {
+			console.log(e);
+			new Notice(`Error can't initialize S3 client ${id}. Please check that client configs are correct.`)
+			this.client = null;
+		}
 
-		this.client = new Client({
-			endPoint,
-			accessKey,
-			secretKey,
-			useSSL: true
-		});
 	}
 
 	public listObjects(all?: boolean) {
 		return new Promise<BucketItem[]>((resolve) => {
 			const s3Index: BucketItem[] = [];
-			this.client.listObjects(this.bucketName, all ? undefined : this.folderName, true)
+			this.client?.listObjects(this.bucketName, all ? undefined : this.folderName, true)
 				.on('data', (i) => {
 					s3Index.push(i)
 				})
@@ -48,16 +56,16 @@ export class S3Client {
 			if (progress) progress(Math.round((prog / file.size) * 100));
 		})
 		readable.on('close', () => { if (cleanup) cleanup(); })
-		return this.client.putObject(this.bucketName,
+		return this.client?.putObject(this.bucketName,
 			join(this.folderName, fileName), readable, file.size);
 	}
 
 	public getObject(path: string, bucketName?: string | null) {
-		return this.client.getObject(bucketName ?? this.bucketName, path);
+		return this.client?.getObject(bucketName ?? this.bucketName, path);
 	}
 
 	public removeObject(path: string, bucketName?: string | null) {
-		return this.client.removeObject(bucketName ?? this.bucketName, path);
+		return this.client?.removeObject(bucketName ?? this.bucketName, path);
 	}
 
 	public createObjURL(url: string, fileName: string): string {
