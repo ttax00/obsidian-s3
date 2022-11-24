@@ -1,7 +1,6 @@
 import blobToIt from "blob-to-it";
 import { BucketItem, Client } from "minio";
 import { Notice } from "obsidian";
-import { join } from "path";
 import internal from "stream";
 
 export class S3Client {
@@ -51,13 +50,13 @@ export class S3Client {
 	public upload(file: File, fileName: string, progress?: (prog: number) => void, cleanup?: () => void) {
 		const readable = internal.Readable.from(blobToIt(file));
 		let prog = 0;
-		readable.on('data', (c: { length: number }) => {
+		readable.on('data', (c: { length: number; }) => {
 			prog += c.length;
 			if (progress) progress(Math.round((prog / file.size) * 100));
 		});
 		readable.on('close', () => { if (cleanup) cleanup(); });
 		return this.client?.putObject(this.bucketName,
-			join(this.folderName, fileName), readable, file.size);
+			`${this.folderName}/${fileName}`, readable, file.size);
 	}
 
 	public getObject(path: string, bucketName?: string | null) {

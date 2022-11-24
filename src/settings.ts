@@ -1,15 +1,51 @@
 import ObsidianS3, { server, settings } from "main";
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 
-export interface IS3SettingsManager {
-	accessKey: string;
-	secretKey: string;
-	endPoint: string;
-	folderName: string;
-	port: string;
-	bucketName: string;
-	activeClient: string;
+export class MIME {
+	mimes: [string, string, string][];
+	constructor(s: string) {
+		this.mimes = parseRawMIME(s);
+		console.log(this.mimes);
+	}
+
+	includeMIME(s: string) {
+		if (this.mimes.find((v) => v[2] === s)) return true;
+		return false;
+	}
+
+	includeEXT(s: string) {
+		if (this.mimes.find((v) => v[1] === s)) return true;
+		return false;
+	}
+
+	getMIME(ext: string) {
+		const t = this.mimes.find((v) => v[1] === ext);
+		if (t) return t[2];
+		else return 'text/plain';
+	}
+
+	getMethod(type: string) {
+		const t = this.mimes.find((v) => v[2] === type);
+		if (t) return t[0];
+		else return 'text/plain';
+	}
 }
+
+
+export function setMime(s: string) {
+	mimeType = new MIME(s);
+}
+
+function parseRawMIME(s: string) {
+	const lines = s.split('\n').map((s) => s.split(','));
+	const correct = lines.filter((l) => {
+		if (l.length === 3) {
+			return true;
+		} else return false;
+	}).map((v) => v.map((v) => v.trim())) as [string, string, string][];
+	return correct;
+}
+
 
 export interface S3ClientSettings {
 	accessKey: string;
@@ -25,6 +61,7 @@ export interface IObsidianSetting {
 	clients: S3ClientSettings[];
 	port: string;
 	activeClient: string;
+	rawMIME: string;
 }
 
 export const DEFAULT_CLIENT: S3ClientSettings = {
@@ -40,7 +77,24 @@ export const DEFAULT_SETTINGS: IObsidianSetting = {
 	clients: [DEFAULT_CLIENT],
 	port: '4998',
 	activeClient: 'default',
+	rawMIME: `
+	img, ico, image/x-icon
+	img, png, image/png
+	img, jpg, image/jpeg
+	img, jpeg, image/jpeg
+	img, gif, image/gif
+	img, svg, image/svg+xml
+	iframe, wav, audio/wav
+	iframe, mp3, audio/mp3
+	iframe, mp4, video/mp4
+	iframe, webm, video/webm
+	link, pdf, application/pdf
+	link, zip, application/zip
+	link, doc, application/doc 
+
+	`
 };
+export let mimeType = new MIME(DEFAULT_SETTINGS.rawMIME);
 
 export class SettingsTab extends PluginSettingTab {
 	plugin: ObsidianS3;
@@ -208,10 +262,17 @@ export class SettingsTab extends PluginSettingTab {
 	displayAdvance(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Allowed MIME Types:')
+			.setDesc('List of supported file types and linking methods.Format: "method(img/iframe/link), .extension, mime/type".\nBy line, empty lines are ignored.')
 			.addTextArea((c) => {
-				c.setValue('.ico, image/x-icon').onChange((v) => {
+				c.inputEl.style.width = '100%';
+				c.inputEl.style.minWidth = '200px';
+				c.inputEl.style.minHeight = '200px';
 
+				c.setValue(settings.rawMIME).onChange(async (v) => {
+					settings.rawMIME = v;
+					setMime(v);
+					await this.plugin.saveSettings();
 				});
-			});
+			}).nameEl.style.display = 'flex';
 	}
 }

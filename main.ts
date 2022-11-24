@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, IObsidianSetting, S3ClientSettings, SettingsTab } from 'src/settings';
 import { S3Server } from 'src/httpServer';
-import { mimeType } from 'src/constants';
+import { mimeType } from 'src/settings';
 import { S3Client } from 'src/s3Client';
 import prettyBytes from 'pretty-bytes';
 import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
@@ -16,7 +16,7 @@ function allFilesAreValidUploads(files: FileList) {
 			new Notice(`Error: File is of 0 size.`);
 			checked = false;
 		}
-		if (!Array.from(mimeType.values()).includes(files[i].type)) {
+		if (!mimeType.includeMIME(files[i].type)) {
 			new Notice(`Error: File of type ${files[i].type} is not supported by Obsidian with external links.`);
 			checked = false;
 		}
@@ -121,9 +121,9 @@ export default class ObsidianS3 extends Plugin {
 				continue;
 			}
 			new Notice(`[${ids[i]}] Found ${doDelete.length} un-used objects, deleting...`);
-			for (let i = 0; i < doDelete.length; i++) {
+			for (let y = 0; y < doDelete.length; y++) {
 				console.log(`[${ids[i]}] S3: Deleting ${doDelete[i].name}`);
-				// await this.s3.removeObject(doDelete[i].name);
+				await this.s3.removeObject(doDelete[i].name);
 			}
 			new Notice(`[${ids[i]}] Deleted ${doDelete.length} objects.`);
 			new Notice(`[${ids[i]}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`);
@@ -227,10 +227,11 @@ export default class ObsidianS3 extends Plugin {
 				const url = s3.createObjURL(server.url, fileName);
 
 				let linkTxt = `![S3 File](${url})`;
-				if (file.type.startsWith('video') || file.type.startsWith('audio')) {
+				const method = mimeType.getMethod(file.type);
+				if (method === 'iframe') {
 					linkTxt = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
-				} else if (file.type === 'text/html') {
-					linkTxt = `<iframe src="${url}"></iframe>`;
+				} else if (method === 'link') {
+					linkTxt = `${url}`;
 				}
 
 				this.writeLine(linkTxt);
