@@ -1,4 +1,4 @@
-import { generateResourceName, getS3Path, matchS3URLs } from './helper'
+import { generateResourceName, getS3Path, matchS3URLs } from './helper';
 
 describe('getS3Path()', () => {
 	it.each([

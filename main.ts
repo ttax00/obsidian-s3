@@ -41,10 +41,10 @@ function isValidSettings(settings: IObsidianSetting) {
 }
 
 function createClients(clientSettings: S3ClientSettings[]) {
-	const s3: S3Client[] = []
+	const s3: S3Client[] = [];
 	settings.clients.forEach((c) => {
 		s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.bucketName, c.folderName, c.id));
-	})
+	});
 	return s3;
 }
 
@@ -90,7 +90,7 @@ export default class ObsidianS3 extends Plugin {
 					new Notice("Indexing...");
 					const ids = this.getClientIDs();
 					for (let i = 0; i < ids.length; i++) {
-						const s3 = server.getClient(ids[i])
+						const s3 = server.getClient(ids[i]);
 						new Notice(`[${ids[i]} client]\nObsidian usage: ${prettyBytes(await s3.getBucketSize())}\nAll usage: ${prettyBytes(await s3.getBucketSize(true))}`);
 					}
 				},
@@ -125,8 +125,8 @@ export default class ObsidianS3 extends Plugin {
 				console.log(`[${ids[i]}] S3: Deleting ${doDelete[i].name}`);
 				// await this.s3.removeObject(doDelete[i].name);
 			}
-			new Notice(`[${ids[i]}] Deleted ${doDelete.length} objects.`)
-			new Notice(`[${ids[i]}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`)
+			new Notice(`[${ids[i]}] Deleted ${doDelete.length} objects.`);
+			new Notice(`[${ids[i]}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`);
 		}
 
 	}
@@ -187,7 +187,7 @@ export default class ObsidianS3 extends Plugin {
 	}
 
 	public writeLine(newLine: string) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) return new Notice('Error: No active view.');
 
 		const { editor } = view;
@@ -204,7 +204,7 @@ export default class ObsidianS3 extends Plugin {
 					text: newLine + "\n",
 				}
 			]
-		})
+		});
 		cursor.line += 1;
 		editor.setCursor(cursor);
 	}
@@ -226,11 +226,11 @@ export default class ObsidianS3 extends Plugin {
 
 				const url = s3.createObjURL(server.url, fileName);
 
-				let linkTxt = `![S3 File](${url})`
+				let linkTxt = `![S3 File](${url})`;
 				if (file.type.startsWith('video') || file.type.startsWith('audio')) {
 					linkTxt = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
 				} else if (file.type === 'text/html') {
-					linkTxt = `<iframe src="${url}"></iframe>`
+					linkTxt = `<iframe src="${url}"></iframe>`;
 				}
 
 				this.writeLine(linkTxt);

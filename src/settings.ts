@@ -34,13 +34,13 @@ export const DEFAULT_CLIENT: S3ClientSettings = {
 	folderName: "obsidian",
 	bucketName: "",
 	id: "default"
-}
+};
 
 export const DEFAULT_SETTINGS: IObsidianSetting = {
 	clients: [DEFAULT_CLIENT],
 	port: '4998',
 	activeClient: 'default',
-}
+};
 
 export class SettingsTab extends PluginSettingTab {
 	plugin: ObsidianS3;
@@ -63,8 +63,8 @@ export class SettingsTab extends PluginSettingTab {
 		containerEl.createEl('h3', { text: 'Client Settings.' });
 		this.displayClient(containerEl);
 
-		containerEl.createEl('h3', { text: 'Advance settings.' })
-
+		containerEl.createEl('h3', { text: 'Advance settings.' });
+		this.displayAdvance(containerEl);
 
 	}
 
@@ -79,14 +79,12 @@ export class SettingsTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 	}
-	displayAdvance(containerEl: HTMLElement) {
-	}
 	displayClient(containerEl: HTMLElement) {
 		new Setting(containerEl).addDropdown((c) => {
-			const o: Record<string, string> = {}
+			const o: Record<string, string> = {};
 			this.plugin.getClientIDs().forEach((i) => {
 				o[i] = i;
-			})
+			});
 			c.addOptions(o)
 				.setValue(settings.activeClient)
 				.onChange(async (v) => {
@@ -175,7 +173,7 @@ export class SettingsTab extends PluginSettingTab {
 					server.close();
 					this.plugin.tryStartService();
 					this.display();
-				})
+				});
 		}).setName("Save settings and reload plugin");
 
 		new Setting(containerEl).setName("ADD or REMOVE client.")
@@ -189,7 +187,7 @@ export class SettingsTab extends PluginSettingTab {
 							folderName: 'obsidian',
 							bucketName: '',
 							id: 'name-me',
-						})
+						});
 						await this.plugin.saveSettings();
 						this.display();
 					});
@@ -205,6 +203,15 @@ export class SettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						this.display();
 					});
+			});
+	}
+	displayAdvance(containerEl: HTMLElement) {
+		new Setting(containerEl)
+			.setName('Allowed MIME Types:')
+			.addTextArea((c) => {
+				c.setValue('.ico, image/x-icon').onChange((v) => {
+
+				});
 			});
 	}
 }

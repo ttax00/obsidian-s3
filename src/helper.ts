@@ -14,7 +14,7 @@ export function matchS3URLs(content: string, url: string): string[] | null {
 }
 
 export async function getS3URLs(files: TFile[], vault: Vault, url: string): Promise<string[]> {
-	const obsidianIndex: string[] = []
+	const obsidianIndex: string[] = [];
 
 	for (let i = 0; i < files.length; i++) {
 		const content = await vault.read(files[i]);

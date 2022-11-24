@@ -19,7 +19,7 @@ export class S3Client {
 
 		this.bucketName = bucketName;
 		this.folderName = folderName;
-		this.id = id
+		this.id = id;
 		try {
 			this.client = new Client({
 				endPoint,
@@ -29,7 +29,7 @@ export class S3Client {
 			});
 		} catch (e) {
 			console.log(e);
-			new Notice(`Error can't initialize S3 client ${id}. Please check that client configs are correct.`)
+			new Notice(`Error can't initialize S3 client ${id}. Please check that client configs are correct.`);
 			this.client = null;
 		}
 
@@ -40,12 +40,12 @@ export class S3Client {
 			const s3Index: BucketItem[] = [];
 			this.client?.listObjects(this.bucketName, all ? undefined : this.folderName, true)
 				.on('data', (i) => {
-					s3Index.push(i)
+					s3Index.push(i);
 				})
 				.on('end', () => {
-					resolve(s3Index)
+					resolve(s3Index);
 				});
-		})
+		});
 	}
 
 	public upload(file: File, fileName: string, progress?: (prog: number) => void, cleanup?: () => void) {
@@ -54,8 +54,8 @@ export class S3Client {
 		readable.on('data', (c: { length: number }) => {
 			prog += c.length;
 			if (progress) progress(Math.round((prog / file.size) * 100));
-		})
-		readable.on('close', () => { if (cleanup) cleanup(); })
+		});
+		readable.on('close', () => { if (cleanup) cleanup(); });
 		return this.client?.putObject(this.bucketName,
 			join(this.folderName, fileName), readable, file.size);
 	}
@@ -75,7 +75,7 @@ export class S3Client {
 	}
 
 	public async getBucketSize(includeNonObsidian?: boolean) {
-		return (await this.listObjects(includeNonObsidian)).map((i) => i.size).reduce((p, c) => p + c)
+		return (await this.listObjects(includeNonObsidian)).map((i) => i.size).reduce((p, c) => p + c);
 	}
 }
 

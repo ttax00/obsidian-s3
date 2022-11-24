@@ -12,19 +12,19 @@ export class S3Server {
 	port: string;
 	server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | undefined;
 	get url() {
-		return `http://localhost:${this.port}`
+		return `http://localhost:${this.port}`;
 	}
 	public getClient(id?: string | null) {
 		const res = this._client.find((c) => c.id === id);
 		if (res) return res;
-		else return this._client[0]
+		else return this._client[0];
 	}
 	constructor(client: S3Client[], port: string) {
 		this._client = client;
 		this.port = port;
 	}
 	public listen() {
-		this.server = http.createServer(this.test.bind(this))
+		this.server = http.createServer(this.test.bind(this));
 
 		new Notice(`Creating S3 server on port: ${this.port}`);
 		this.server.listen(this.port);
