@@ -26,7 +26,7 @@ Supported files (limited by files allowed to be linked by Obsidian):
 - [x] Generate links for images.
 - [x] Generate links for videos.
 - [x] Generate links for audio.
-- [ ] Returning download links for un-supported resource? (pdf, txt, ...).
+- [x] Returning download links for un-supported resource? (pdf, txt, ...).
 ### Helpers/Misc
 - [x] Command: delete un-used resources.
 - [x] Command: Show bucket size

@@ -87,9 +87,11 @@ export const DEFAULT_SETTINGS: IObsidianSetting = {
 	iframe, wav, audio/wav
 	iframe, mp3, audio/mp3
 	iframe, mp4, video/mp4
+	iframe, webm, video/webm
 	link, pdf, application/pdf
 	link, zip, application/zip
-	link, doc, application/doc
+	link, doc, application/doc 
+
 	`
 };
 export let mimeType = new MIME(DEFAULT_SETTINGS.rawMIME);
