@@ -30,7 +30,7 @@ export class S3Server {
 		this.server.listen(this.port);
 	}
 
-	async test(req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage> & {
+	test(req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage> & {
 		req: http.IncomingMessage;
 	}) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,7 +38,7 @@ export class S3Server {
 		res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
 		res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-		if (!req.url) return new Notice(`unknown url: ${req.url}`);
+		if (!req.url) return console.log("ERROR: URL is undefined");
 		const url = new URL(`${this.url}${req.url}`);
 		const ext = parseExt(url.pathname);
 		const path = decodeURI(url.pathname);
@@ -46,17 +46,21 @@ export class S3Server {
 		const client = url.searchParams.get("client");
 		const bucket = url.searchParams.get("bucket");
 
+		void (async () => {
+			try {
+				const result = await this.getClient(client)?.getObject(path, bucket);
+				res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
+				result?.pipe(res);
+			} catch (e) {
+				res.statusCode = 500;
+				console.log(`Error getting the file`);
+				console.log(e);
+				res.end(`Error getting the file`);
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				new Notice(`S3: Unable to fetch ${path} \nIs client(${client}) credentials correct?`);
+			}
+		})();
 
-		try {
-			const result = await this.getClient(client)?.getObject(path, bucket);
-			res.setHeader('Content-type', mimeType.get(ext) || 'text/plain');
-			result?.pipe(res);
-		} catch (e) {
-			res.statusCode = 500;
-			console.log(`Error getting the file: ${e}`);
-			res.end(`Error getting the file: ${e}.`);
-			new Notice(`S3: Unable to fetch ${path} \nIs client(${client}) credentials correct?`);
-		}
 	}
 
 	public close() {
