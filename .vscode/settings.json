@@ -5,5 +5,7 @@
 		"storjshare"
 	],
 	"npm.packageManager": "pnpm",
-	"eslint.packageManager": "pnpm"
+	"eslint.packageManager": "pnpm",
+	"javascript.format.semicolons": "insert",
+	"typescript.format.semicolons": "insert"
 }
