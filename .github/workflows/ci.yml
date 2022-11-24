@@ -12,16 +12,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: enable pnpm
+        run: corepack enable
       - name: install dependencies
-        run: npm i
+        run: pnpm i
       - name: run tests
-        run: npm run test
+        run: pnpm run test
 
   build: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: enable pnpm
+        run: corepack enable
       - name: install dependencies
-        run: npm i
+        run: pnpm i
       - name: run build
-        run: npm run build
+        run: pnpm run build
