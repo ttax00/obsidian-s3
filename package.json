@@ -1,14 +1,15 @@
 {
 	"name": "obsidian-s3",
 	"version": "0.1.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "An Obsidian plugin for storage and retrieval of media attachments on S3 compatible services.",
 	"main": "main.js",
 	"packageManager": "npm@8.19.2",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
+		"clean": "rimraf main.js",
 		"test": "jest .",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"build": "pnpm clean && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"bump": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
 		"symlink:linux": "ln -s $(realpath ./main.js) ./main_sym.js && ln -s $(realpath ./manifest.json) ./manifest_sym.json"
 	},
@@ -33,6 +34,7 @@
 		"@types/minio": "^7.0.14",
 		"blob-to-it": "^2.0.0",
 		"minio": "^7.0.32",
-		"pretty-bytes": "^6.0.0"
+		"pretty-bytes": "^6.0.0",
+		"rimraf": "^3.0.2"
 	}
 }

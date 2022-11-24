@@ -3,5 +3,7 @@
 		"lezer",
 		"minio",
 		"storjshare"
-	]
+	],
+	"npm.packageManager": "pnpm",
+	"eslint.packageManager": "pnpm"
 }
