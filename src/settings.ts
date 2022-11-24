@@ -58,6 +58,17 @@ export class SettingsTab extends PluginSettingTab {
 
 		containerEl.createEl('h2', { text: 'Settings for your S3 cloud storage.' });
 		containerEl.createEl('h3', { text: 'Server Settings.' });
+		this.displayServer(containerEl);
+
+		containerEl.createEl('h3', { text: 'Client Settings.' });
+		this.displayClient(containerEl);
+
+		containerEl.createEl('h3', { text: 'Advance settings.' })
+
+
+	}
+
+	displayServer(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Server Port (Default: 4998)')
 			.addText(text => text
@@ -67,9 +78,10 @@ export class SettingsTab extends PluginSettingTab {
 					settings.port = value.trim() ?? DEFAULT_SETTINGS.port;
 					await this.plugin.saveSettings();
 				}));
-
-		containerEl.createEl('h3', { text: 'Client Settings.' });
-
+	}
+	displayAdvance(containerEl: HTMLElement) {
+	}
+	displayClient(containerEl: HTMLElement) {
 		new Setting(containerEl).addDropdown((c) => {
 			const o: Record<string, string> = {}
 			this.plugin.getClientIDs().forEach((i) => {
@@ -117,7 +129,6 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Access Key')
 			.setDesc('Your S3 Access Key')
 			.addText(text => text
-				.setPlaceholder('')
 				.setValue(this.plugin.getActive().accessKey)
 				.onChange(async (value) => {
 					this.plugin.getActive().accessKey = value.trim();
@@ -129,7 +140,6 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('Secret Key')
 			.setDesc('Your S3 Secret Key')
 			.addText(text => text
-				.setPlaceholder('')
 				.setValue(this.plugin.getActive().secretKey)
 				.onChange(async (value) => {
 					this.plugin.getActive().secretKey = value.trim();
@@ -196,6 +206,5 @@ export class SettingsTab extends PluginSettingTab {
 						this.display();
 					});
 			});
-
 	}
 }
