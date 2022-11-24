@@ -12,10 +12,6 @@
 		"plugin:@typescript-eslint/recommended-requiring-type-checking",
 		"plugin:@typescript-eslint/recommended"
 	],
-	"files": [
-		"*.ts",
-		"*.tsx"
-	],
 	"parserOptions": {
 		"project": [
 			"./tsconfig.json"
