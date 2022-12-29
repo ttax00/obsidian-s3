@@ -110,23 +110,24 @@ export default class ObsidianS3 extends Plugin {
 
 		const ids = this.getClientIDs();
 		for (let i = 0; i < ids.length; i++) {
-			new Notice(`[${ids[i]}] Indexing S3 objects...`);
-			const filter = obsidianUrls.filter((u) => u.searchParams.get("client") === ids[i]).map((u) => getS3Path(u));
+			const id = ids[i];
+			new Notice(`[${id}] Indexing S3 objects...`);
+			const filter = obsidianUrls.filter((u) => u.searchParams.get("client") === id).map((u) => getS3Path(u));
 
-			const s3 = server.getClient(ids[i]);
+			const s3 = server.getClient(id);
 			const s3Index = await s3.listObjects();
 			const doDelete = s3Index.filter((i) => !filter.includes(i.name));
 			if (doDelete.length === 0) {
-				new Notice(`[${ids[i]}] No object to delete.`);
+				new Notice(`[${id}] No object to delete.`);
 				continue;
 			}
-			new Notice(`[${ids[i]}] Found ${doDelete.length} un-used objects, deleting...`);
+			new Notice(`[${id}] Found ${doDelete.length} un-used objects, deleting...`);
 			for (let y = 0; y < doDelete.length; y++) {
-				console.log(`[${ids[i]}] S3: Deleting ${doDelete[i].name}`);
+				console.log(`[${id}] S3: Deleting ${doDelete[i].name}`);
 				await this.s3.removeObject(doDelete[i].name);
 			}
-			new Notice(`[${ids[i]}] Deleted ${doDelete.length} objects.`);
-			new Notice(`[${ids[i]}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`);
+			new Notice(`[${id}] Deleted ${doDelete.length} objects.`);
+			new Notice(`[${id}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`);
 		}
 
 	}
