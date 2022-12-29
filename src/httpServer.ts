@@ -25,13 +25,13 @@ export class S3Server {
 		this.port = port;
 	}
 	public listen() {
-		this.server = http.createServer(this.test.bind(this));
+		this.server = http.createServer(this.serverHandler.bind(this));
 
 		new Notice(`Creating S3 server on port: ${this.port}`);
 		this.server.listen(this.port);
 	}
 
-	test(req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage> & {
+	serverHandler(req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage> & {
 		req: http.IncomingMessage;
 	}) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
