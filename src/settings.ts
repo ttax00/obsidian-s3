@@ -153,7 +153,7 @@ export class SettingsTab extends PluginSettingTab {
 			.setName('ID')
 			.setDesc('S3 Client unique id')
 			.addText(text => text
-				.setPlaceholder('gateway.storjshare.io')
+				.setPlaceholder('unique-name')
 				.setValue(this.plugin.getActive().id)
 				.setDisabled(this.plugin.getActive().id === DEFAULT_CLIENT.id)
 				.onChange(async (value) => {
