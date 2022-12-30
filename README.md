@@ -1,7 +1,7 @@
 # Obsidian S3
 
 ![GitHub](https://img.shields.io/github/license/TechTheAwesome/obsidian-s3?style=for-the-badge)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/techtheawesome/obsidian-s3/Typescript?style=for-the-badge)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/TechTheAwesome/obsidian-s3/ci.yml?style=for-the-badge)
 [![wakatime](https://wakatime.com/badge/user/4312729e-bc28-4bc0-9074-161a64a7ad20/project/83a03e69-c8e0-49a9-ac01-a80c5ef7c96f.svg?style=for-the-badge)](https://wakatime.com/badge/user/4312729e-bc28-4bc0-9074-161a64a7ad20/project/83a03e69-c8e0-49a9-ac01-a80c5ef7c96f)
 
 An [Obsidian](https://obsidian.md/) plugin for storage and retrieval of media attachments on S3 compatible services. 
