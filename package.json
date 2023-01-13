@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-s3",
+	"name": "s3-attachments-storage",
 	"version": "0.1.1",
 	"description": "An Obsidian plugin for storage and retrieval of media attachments on S3 compatible services.",
 	"main": "main.js",

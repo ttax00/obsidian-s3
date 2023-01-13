@@ -78,13 +78,13 @@ export default class ObsidianS3 extends Plugin {
 		this.setupHandlers();
 		if (this.tryStartService()) {
 			this.addCommand({
-				id: 'obsidian-s3-clear-unused',
+				id: 's3-clear-unused',
 				name: 'Clear unused s3 objects.',
 				callback: this.clearUnusedCallback.bind(this),
 			});
 
 			this.addCommand({
-				id: 'obsidian-s3-get-obsidian-size',
+				id: 's3-get-obsidian-size',
 				name: 'Get usage statistics.',
 				callback: async () => {
 					new Notice("Indexing...");
