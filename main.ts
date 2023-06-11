@@ -4,7 +4,7 @@ import { S3Server } from 'src/httpServer';
 import { mimeType } from 'src/settings';
 import { S3Client } from 'src/s3Client';
 import prettyBytes from 'pretty-bytes';
-import { generateResourceName, getS3Path, getS3URLs } from 'src/helper';
+import { buf2hex, generateResourceName, getS3Path, getS3URLs } from 'src/helper';
 
 
 function allFilesAreValidUploads(files: FileList) {
@@ -155,7 +155,7 @@ export default class ObsidianS3 extends Plugin {
 		await this.saveData(settings);
 	}
 
-	private async pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
+	private pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.s3) return this.credentialsError();
 		if (!e.clipboardData) return;
 		const files = e.clipboardData.files;
@@ -163,9 +163,9 @@ export default class ObsidianS3 extends Plugin {
 		if (!allFilesAreValidUploads(files)) return;
 		e.preventDefault();
 
-		await this.uploadFiles(files);
+		this.uploadFiles(files);
 	}
-	private async dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
+	private dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
 		if (!this.s3) return this.credentialsError();
 		if (!e.dataTransfer) return;
 		if (!e.dataTransfer.types.length || !e.dataTransfer.types.includes("Files")) return;
@@ -175,7 +175,7 @@ export default class ObsidianS3 extends Plugin {
 		if (!allFilesAreValidUploads(files)) return;
 
 		e.preventDefault();
-		await this.uploadFiles(files);
+		this.uploadFiles(files);
 	}
 
 	private setupHandlers() {
@@ -210,39 +210,50 @@ export default class ObsidianS3 extends Plugin {
 		editor.setCursor(cursor);
 	}
 
-	private async uploadFiles(files: FileList) {
+	private uploadFiles(files: FileList) {
 		for (let i = 0; i < files.length; i += 1) {
 			const file = files[i];
-			const fileName = generateResourceName(file.name, this.app.workspace.getActiveFile()?.basename);
-
-			new Notice(`Uploading: ${fileName} ${prettyBytes(file.size)} ...`);
-			try {
-				const s3 = this.s3;
-				let progress = 0;
-				const handle = window.setInterval(() => new Notice(`Uploading: ${fileName} ${progress}%`), 5000);
-				this.registerInterval(handle);
-				await s3.upload(file, fileName,
-					(prog) => progress = prog,
-					() => window.clearInterval(handle));
-
-				const url = s3.createObjURL(server.url, fileName);
-
-				let linkTxt = `![S3 File](${url})`;
-				const method = mimeType.getMethod(file.type);
-				if (method === 'iframe') {
-					linkTxt = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
-				} else if (method === 'link') {
-					linkTxt = `${url}`;
-				}
-
-				this.writeLine(linkTxt);
-			}
-			catch (e) {
-				new Notice(`Error: Unable to upload ${fileName}. Make sure your S3 credentials are correct.`);
-				return console.log(e);
-			}
+			const baseName = this.app.workspace.getActiveFile()?.basename;
+			const reader = new FileReader();
+			const callback = (file: File, fileName: string) => { void this.uploadFile(file, fileName); };
+			reader.readAsArrayBuffer(file);
+			reader.onloadend = async function (ev) {
+				const hashBuf = await crypto.subtle.digest("SHA-1", reader.result as ArrayBuffer);
+				const hash = buf2hex(hashBuf);
+				const fileName = generateResourceName(file.name, baseName, hash);
+				callback(file, fileName);
+			};
 		}
 	}
 
+	private async uploadFile(file: File, fileName: string) {
+		new Notice(`Uploading: ${fileName} ${prettyBytes(file.size)} ...`);
+		try {
+			const s3 = this.s3;
+			let progress = 0;
+			const handle = window.setInterval(() => new Notice(`Uploading: ${fileName} ${progress}%`), 5000);
+			this.registerInterval(handle);
+			await s3.upload(file, fileName,
+				(prog) => progress = prog,
+				() => window.clearInterval(handle));
+
+			const url = s3.createObjURL(server.url, fileName);
+
+			let linkTxt = `![S3 File](${url})`;
+			const method = mimeType.getMethod(file.type);
+			if (method === 'iframe') {
+				linkTxt = `<iframe src="${url}" alt="${fileName}" style="overflow:hidden;height:400;width:100%" allowfullscreen></iframe>`;
+			} else if (method === 'link') {
+				linkTxt = `${url}`;
+			}
+
+			this.writeLine(linkTxt);
+		}
+		catch (e) {
+			new Notice(`Error: Unable to upload ${fileName}. Make sure your S3 credentials are correct.`);
+			return console.log(e);
+		}
+
+	}
 }
 

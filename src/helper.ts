@@ -27,6 +27,12 @@ export async function getS3URLs(files: TFile[], vault: Vault, url: string): Prom
 	return [...new Set(obsidianIndex)];
 }
 
-export function generateResourceName(fileName: string, parent?: string) {
-	return parent ? `${parent}-${Date.now()}-${fileName}` : `${Date.now()}-${fileName}`;
+export function generateResourceName(fileName: string, parent?: string, hash?: string) {
+	return `${parent ? parent + '-' : ''}${fileName}-${hash ?? Date.now()}`;
+}
+
+export function buf2hex(buffer: ArrayBuffer) {
+	return [...new Uint8Array(buffer)]
+		.map(x => x.toString(16).padStart(2, '0'))
+		.join('');
 }
