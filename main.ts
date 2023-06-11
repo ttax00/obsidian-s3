@@ -1,4 +1,4 @@
-import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, IObsidianSetting, S3ClientSettings, SettingsTab } from 'src/settings';
 import { S3Server } from 'src/httpServer';
 import { mimeType } from 'src/settings';
@@ -155,7 +155,7 @@ export default class ObsidianS3 extends Plugin {
 		await this.saveData(settings);
 	}
 
-	private pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView) {
+	private pasteEventHandler(e: ClipboardEvent, _: Editor, markdownView: MarkdownView | MarkdownFileInfo) {
 		if (!this.s3) return this.credentialsError();
 		if (!e.clipboardData) return;
 		const files = e.clipboardData.files;
@@ -165,7 +165,7 @@ export default class ObsidianS3 extends Plugin {
 
 		this.uploadFiles(files);
 	}
-	private dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView) {
+	private dropEventHandler(e: DragEvent, _: Editor, markdownView: MarkdownView | MarkdownFileInfo) {
 		if (!this.s3) return this.credentialsError();
 		if (!e.dataTransfer) return;
 		if (!e.dataTransfer.types.length || !e.dataTransfer.types.includes("Files")) return;

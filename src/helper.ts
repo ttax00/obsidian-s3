@@ -28,7 +28,10 @@ export async function getS3URLs(files: TFile[], vault: Vault, url: string): Prom
 }
 
 export function generateResourceName(fileName: string, parent?: string, hash?: string) {
-	return `${parent ? parent + '-' : ''}${fileName}-${hash ?? Date.now()}`;
+	if (hash)
+		return `${fileName}-${hash}`;
+	else
+		return `${parent ? parent + '-' : ''}${fileName}-${Date.now()}`;
 }
 
 export function buf2hex(buffer: ArrayBuffer) {
