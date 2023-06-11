@@ -36,9 +36,8 @@ describe('matchS3URLs()', () => {
 describe('generateObjectName()', () => {
 	it('should generate object name based on file name & parent folder', () => {
 		const now = Date.now();
-		const res1 = generateResourceName("music.mp3", "obsidian");
-		const res2 = generateResourceName("music.mp3");
-		expect(res1).toBe(`obsidian-${now}-music.mp3`);
-		expect(res2).toBe(`${now}-music.mp3`);
+		expect(generateResourceName("music.mp3", "obsidian", "hash")).toBe(`music-hash.mp3`);
+		expect(generateResourceName("music.mp3", "obsidian")).toBe(`obsidian-music-${now}.mp3`);
+		expect(generateResourceName("music.mp3")).toBe(`music-${now}.mp3`);
 	});
 });
