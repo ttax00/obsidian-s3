@@ -43,7 +43,7 @@ function isValidSettings(settings: IObsidianSetting) {
 function createClients(clientSettings: S3ClientSettings[]) {
 	const s3: S3Client[] = [];
 	settings.clients.forEach((c) => {
-		s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.bucketName, c.folderName, c.id));
+		s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.region, c.bucketName, c.folderName, c.id));
 	});
 	return s3;
 }
