@@ -53,6 +53,7 @@ export interface S3ClientSettings {
 	endPoint: string;
 	folderName: string;
 	bucketName: string;
+	region: string;
 	id: string;
 }
 
@@ -68,6 +69,7 @@ export const DEFAULT_CLIENT: S3ClientSettings = {
 	accessKey: "",
 	secretKey: "",
 	endPoint: "",
+	region: "",
 	folderName: "obsidian",
 	bucketName: "",
 	id: "default"
@@ -198,11 +200,20 @@ export class SettingsTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		new Setting(containerEl)
+			.setName('Region')
+			.setDesc('Your S3 Region')
+			.addText(text => text
+				.setValue(this.plugin.getActive().region)
+				.onChange(async (value) => {
+					this.plugin.getActive().region = value.trim();
+					await this.plugin.saveSettings();
+				}));
+
 
 		new Setting(containerEl)
 			.setName('Bucket Name')
 			.addText(text => text
-				.setPlaceholder('')
 				.setValue(this.plugin.getActive().bucketName)
 				.onChange(async (value) => {
 					this.plugin.getActive().bucketName = value.trim();
@@ -238,6 +249,7 @@ export class SettingsTab extends PluginSettingTab {
 							accessKey: '',
 							secretKey: '',
 							endPoint: '',
+							region: '',
 							folderName: 'obsidian',
 							bucketName: '',
 							id: 'name-me',

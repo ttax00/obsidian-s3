@@ -9,7 +9,7 @@ export class S3Client {
 	bucketName: string;
 	folderName: string;
 
-	constructor(endPoint: string, accessKey: string, secretKey: string, bucketName: string, folderName: string, id: string) {
+	constructor(endPoint: string, accessKey: string, secretKey: string, region: string, bucketName: string, folderName: string, id: string) {
 		if (endPoint.startsWith('https://') || endPoint.startsWith('http://')) {
 			const url = new URL(endPoint);
 			endPoint = url.hostname;
@@ -24,6 +24,7 @@ export class S3Client {
 				endPoint,
 				accessKey,
 				secretKey,
+				region,
 				useSSL: true
 			});
 		} catch (e) {
