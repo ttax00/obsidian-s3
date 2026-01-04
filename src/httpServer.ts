@@ -42,7 +42,9 @@ export class S3Server {
 		if (!req.url) return console.log("ERROR: URL is undefined");
 		const url = new URL(`${this.url}${req.url}`);
 		const ext = parseExt(url.pathname);
-		const path = decodeURI(url.pathname);
+		// S3 object keys don't start with '/', but URL pathnames do.
+		// If we pass a leading '/' through to S3, we'll get NoSuchKey.
+		const path = decodeURI(url.pathname).replace(/^\/+/, '');
 		console.log(`fetching: ${url.toString()}`);
 		const client = url.searchParams.get("client");
 		const bucket = url.searchParams.get("bucket");

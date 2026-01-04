@@ -42,7 +42,7 @@ function isValidSettings(settings: IObsidianSetting) {
 
 function createClients(clientSettings: S3ClientSettings[]) {
 	const s3: S3Client[] = [];
-	settings.clients.forEach((c) => {
+	clientSettings.forEach((c) => {
 		s3.push(new S3Client(c.endPoint, c.accessKey, c.secretKey, c.bucketName, c.folderName, c.id));
 	});
 	return s3;
@@ -55,9 +55,8 @@ export default class ObsidianS3 extends Plugin {
 	get s3() {
 		return server.getClient(settings.activeClient);
 	}
-	credentialsError() {
+	credentialsError(): void {
 		new Notice("Please fill out S3 credentials to enable the Obsidian S3 plugin.");
-		return true;
 	}
 	getActive() {
 		const res = settings.clients.find((c) => c.id === settings.activeClient);
@@ -69,7 +68,7 @@ export default class ObsidianS3 extends Plugin {
 		return settings.clients.map((c) => c.id);
 	}
 
-	async onload() {
+	async onload(): Promise<void> {
 		console.log(`Loading ${this.pluginName}`);
 		await this.loadSettings();
 
@@ -97,7 +96,8 @@ export default class ObsidianS3 extends Plugin {
 			});
 
 		} else {
-			return this.credentialsError();
+			this.credentialsError();
+			return;
 		}
 	}
 
@@ -116,15 +116,17 @@ export default class ObsidianS3 extends Plugin {
 
 			const s3 = server.getClient(id);
 			const s3Index = await s3.listObjects();
-			const doDelete = s3Index.filter((i) => !filter.includes(i.name));
+			const doDelete = s3Index.filter(
+				(i): i is typeof i & { name: string } => !!i.name && !filter.includes(i.name)
+			);
 			if (doDelete.length === 0) {
 				new Notice(`[${id}] No object to delete.`);
 				continue;
 			}
 			new Notice(`[${id}] Found ${doDelete.length} un-used objects, deleting...`);
 			for (let y = 0; y < doDelete.length; y++) {
-				console.log(`[${id}] S3: Deleting ${doDelete[i].name}`);
-				await this.s3.removeObject(doDelete[i].name);
+				console.log(`[${id}] S3: Deleting ${doDelete[y].name}`);
+				await s3.removeObject(doDelete[y].name);
 			}
 			new Notice(`[${id}] Deleted ${doDelete.length} objects.`);
 			new Notice(`[${id}] Current bucket size ${prettyBytes(await s3.getBucketSize())}`);
